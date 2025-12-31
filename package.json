@@ -1,0 +1,60 @@
+{
+  "name": "ignite",
+  "displayName": "Ignite",
+  "description": "Ignite your Go development: Auto-attach debugger with Air hot-reload.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Debuggers", "Other"],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "autoAttachUI.start", "title": "Ignite: Start Auto-Attach" },
+      { "command": "autoAttachUI.open", "title": "Ignite: Process (Start/Stop)" },
+      { "command": "autoAttachUI.stop", "title": "Ignite: Stop Auto-Attach" }
+    ],
+    "configuration": {
+      "title": "Ignite",
+      "properties": {
+        "autoAttachUI.processName": {
+          "type": "string",
+          "default": "api",
+          "description": "Logical process/binary name (used for PROC_NAME and process matching)."
+        },
+        "autoAttachUI.pollMs": {
+          "type": "number",
+          "default": 300,
+          "description": "Polling interval for finding the process."
+        },
+        "autoAttachUI.startAir": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, starts Air in an integrated terminal with PROC_NAME."
+        },
+        "autoAttachUI.airCommand": {
+          "type": "string",
+          "default": "air -c .air.toml",
+          "description": "Command used to start Air."
+        },
+        "autoAttachUI.attachDelay": {
+          "type": "number",
+          "default": 5000,
+          "description": "Delay (ms) after detecting the process before attaching. Increase if you see 'stub exited' errors."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5"
+  }
+}
