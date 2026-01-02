@@ -13,7 +13,8 @@ async function openMiniUI() {
       { label: GlobalState.isRunning() ? "$(stop) Stop" : "$(play) Start", description: `Process: ${currentName}` },
       { label: "$(pencil) Change process", description: `Current: ${currentName}` },
       { label: "$(gear) Change command", description: `Current: ${config.airCommand}` },
-      { label: "$(trash) Reset terminal", description: "Closes the internal Air terminal (if created by extension)" }
+      { label: "$(trash) Reset terminal", description: "Closes the internal Air terminal if created by extension" },
+      { label: "$(sync) Reset Config", description: "Clears manual process name and start command" }
     ],
     { title: "Ignite: Control Panel", placeHolder: "Select an action" }
   );
@@ -50,7 +51,18 @@ async function openMiniUI() {
     return;
   }
 
-  if (pick.label.includes("Reset")) {
+  if (pick.label.includes("Reset Config")) {
+    await updateConfiguration(CONFIG_KEYS.PROCESS_NAME, undefined);
+    await updateConfiguration(CONFIG_KEYS.AIR_COMMAND, undefined);
+    const newConfig = getConfiguration();
+    vscode.window.showInformationMessage(`Configuration reset. Auto-detected process: ${newConfig.processName}`);
+    if (!GlobalState.isRunning()) {
+      setStatus(`$(play) Ignite: ${newConfig.processName}`, COMMANDS.OPEN, "Click to start or configure");
+    }
+    return;
+  }
+
+  if (pick.label.includes("Reset terminal")) {
     const term = GlobalState.getAirTerminal();
     if (term) {
       term.dispose();

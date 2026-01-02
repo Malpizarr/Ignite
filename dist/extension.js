@@ -40,7 +40,9 @@ const helpers_1 = require("./helpers");
 const auto_attach_1 = require("./auto_attach");
 const ui_1 = require("./ui");
 const config_1 = require("./config");
+const state_1 = require("./state");
 function activate(context) {
+    state_1.GlobalState.setContext(context);
     context.subscriptions.push(vscode.commands.registerCommand(config_1.COMMANDS.START, () => (0, auto_attach_1.startAutoAttach)()), vscode.commands.registerCommand(config_1.COMMANDS.OPEN, () => (0, ui_1.openMiniUI)()), vscode.commands.registerCommand(config_1.COMMANDS.STOP, () => (0, helpers_1.stopAll)()));
     const config = (0, config_1.getConfiguration)();
     const currentName = config.processName;

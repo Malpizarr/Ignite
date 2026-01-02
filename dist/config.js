@@ -37,6 +37,7 @@ exports.DEFAULTS = exports.CONFIG_KEYS = exports.CONFIG_SECTION = exports.COMMAN
 exports.getConfiguration = getConfiguration;
 exports.updateConfiguration = updateConfiguration;
 const vscode = __importStar(require("vscode"));
+const state_1 = require("./state");
 exports.COMMANDS = {
     START: "autoAttachUI.start",
     OPEN: "autoAttachUI.open",
@@ -47,27 +48,52 @@ exports.CONFIG_KEYS = {
     PROCESS_NAME: "processName",
     POLL_MS: "pollMs",
     START_AIR: "startAir",
-    AIR_COMMAND: "airCommand",
+    AIR_COMMAND: "startCommand",
     ATTACH_DELAY: "attachDelay",
 };
 exports.DEFAULTS = {
     PROCESS_NAME: "ignite",
-    POLL_MS: 300,
-    START_AIR: true,
-    AIR_COMMAND: "make run",
-    ATTACH_DELAY: 5000,
+    // AIR_COMMAND is defined in package.json
 };
 function getConfiguration() {
     const cfg = vscode.workspace.getConfiguration(exports.CONFIG_SECTION);
+    const state = state_1.GlobalState.getContext()?.workspaceState;
+    const manualName = state?.get(exports.CONFIG_KEYS.PROCESS_NAME);
+    const inspect = cfg.inspect(exports.CONFIG_KEYS.PROCESS_NAME);
+    const workspaceSetting = inspect?.workspaceValue;
+    const globalSetting = inspect?.globalValue;
+    let folderName = exports.DEFAULTS.PROCESS_NAME;
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+        folderName = vscode.workspace.workspaceFolders[0].name;
+    }
+    const processName = manualName ?? workspaceSetting ?? folderName ?? globalSetting;
+    const inspectCmd = cfg.inspect(exports.CONFIG_KEYS.AIR_COMMAND);
+    const airCommand = state?.get(exports.CONFIG_KEYS.AIR_COMMAND) ?? cfg.get(exports.CONFIG_KEYS.AIR_COMMAND);
+    console.log("IGNITE CONFIG DEBUG:", {
+        key: exports.CONFIG_KEYS.AIR_COMMAND,
+        manual: state?.get(exports.CONFIG_KEYS.AIR_COMMAND),
+        workspaceValue: inspectCmd?.workspaceValue,
+        globalValue: inspectCmd?.globalValue,
+        defaultValue: inspectCmd?.defaultValue,
+        finalValue: airCommand
+    });
     return {
-        processName: cfg.get(exports.CONFIG_KEYS.PROCESS_NAME, exports.DEFAULTS.PROCESS_NAME),
-        pollMs: cfg.get(exports.CONFIG_KEYS.POLL_MS, exports.DEFAULTS.POLL_MS),
-        startAir: cfg.get(exports.CONFIG_KEYS.START_AIR, exports.DEFAULTS.START_AIR),
-        airCommand: cfg.get(exports.CONFIG_KEYS.AIR_COMMAND, exports.DEFAULTS.AIR_COMMAND),
-        attachDelay: cfg.get(exports.CONFIG_KEYS.ATTACH_DELAY, exports.DEFAULTS.ATTACH_DELAY),
+        // processName: cfg.get<string>(CONFIG_KEYS.PROCESS_NAME, DEFAULTS.PROCESS_NAME),
+        processName,
+        pollMs: cfg.get(exports.CONFIG_KEYS.POLL_MS),
+        startAir: cfg.get(exports.CONFIG_KEYS.START_AIR),
+        airCommand,
+        attachDelay: cfg.get(exports.CONFIG_KEYS.ATTACH_DELAY),
     };
 }
 async function updateConfiguration(key, value, target = vscode.ConfigurationTarget.Workspace) {
+    if (key === exports.CONFIG_KEYS.PROCESS_NAME || key === exports.CONFIG_KEYS.AIR_COMMAND) {
+        const state = state_1.GlobalState.getContext()?.workspaceState;
+        if (state) {
+            await state.update(key, value);
+            return;
+        }
+    }
     const cfg = vscode.workspace.getConfiguration(exports.CONFIG_SECTION);
     await cfg.update(key, value, target);
 }

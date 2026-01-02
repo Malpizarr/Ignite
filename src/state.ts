@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 let running = false;
 let statusItem: vscode.StatusBarItem | undefined;
 let airTerminal: vscode.Terminal | undefined;
+let extContext: vscode.ExtensionContext | undefined;
 
 export const GlobalState = {
   isRunning: () => running,
@@ -12,5 +13,8 @@ export const GlobalState = {
   setStatusItem: (v: vscode.StatusBarItem | undefined) => { statusItem = v; },
 
   getAirTerminal: () => airTerminal,
-  setAirTerminal: (v: vscode.Terminal | undefined) => { airTerminal = v; }
+  setAirTerminal: (v: vscode.Terminal | undefined) => { airTerminal = v; },
+
+  getContext: () => extContext,
+  setContext: (v: vscode.ExtensionContext) => { extContext = v; }
 };

@@ -3,8 +3,10 @@ import { setStatus, stopAll, deactivate as deactivateHelper } from "./helpers";
 import { startAutoAttach } from "./auto_attach";
 import { openMiniUI } from "./ui";
 import { getConfiguration, COMMANDS } from "./config";
+import { GlobalState } from "./state";
 
 export function activate(context: vscode.ExtensionContext) {
+  GlobalState.setContext(context);
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.START, () => startAutoAttach()),
     vscode.commands.registerCommand(COMMANDS.OPEN, () => openMiniUI()),

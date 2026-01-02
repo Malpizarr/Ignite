@@ -1,6 +1,6 @@
 VSCE = npx vsce
 CODE = code
-VSIX = ignite-0.0.1.vsix
+VSIX = ignite-0.0.2.vsix
 
 install:
 	$(CODE) --install-extension $(VSIX) --force
