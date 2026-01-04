@@ -13,6 +13,7 @@ async function openMiniUI() {
       { label: GlobalState.isRunning() ? "$(stop) Stop" : "$(play) Start", description: `Process: ${currentName}` },
       { label: "$(pencil) Change process", description: `Current: ${currentName}` },
       { label: "$(gear) Change command", description: `Current: ${config.airCommand}` },
+      { label: "$(settings) Advanced Settings", description: "Poll Interval & Attach Delay" },
       { label: "$(trash) Reset terminal", description: "Closes the internal Air terminal if created by extension" },
       { label: "$(sync) Reset Config", description: "Clears manual process name and start command" }
     ],
@@ -51,9 +52,55 @@ async function openMiniUI() {
     return;
   }
 
+  if (pick.label.includes("Advanced Settings")) {
+    const action = await vscode.window.showQuickPick(
+      [
+        { label: "Poll Interval", description: `Current: ${config.pollMs}ms` },
+        { label: "Attach Delay", description: `Current: ${config.attachDelay}ms` }
+      ],
+      { title: "Ignite: Advanced Settings" }
+    );
+
+    if (!action) return;
+
+    if (action.label === "Poll Interval") {
+      const val = await vscode.window.showInputBox({
+        title: "Poll Interval (ms)",
+        value: config.pollMs.toString(),
+        prompt: "How often to check for the process."
+      });
+      if (val) {
+        const ms = parseInt(val, 10);
+        if (!isNaN(ms) && ms > 0) {
+           await updateConfiguration(CONFIG_KEYS.POLL_MS, ms);
+           vscode.window.showInformationMessage(`Poll Interval updated to ${ms}ms`);
+        }
+      }
+    }
+
+    if (action.label === "Attach Delay") {
+      const val = await vscode.window.showInputBox({
+        title: "Attach Delay (ms)",
+        value: config.attachDelay.toString(),
+        prompt: "Delay after detection before attaching."
+      });
+      if (val) {
+        const ms = parseInt(val, 10);
+        if (!isNaN(ms) && ms >= 0) {
+           await updateConfiguration(CONFIG_KEYS.ATTACH_DELAY, ms);
+           vscode.window.showInformationMessage(`Attach Delay updated to ${ms}ms`);
+        }
+      }
+    }
+    return;
+  }
+
   if (pick.label.includes("Reset Config")) {
     await updateConfiguration(CONFIG_KEYS.PROCESS_NAME, undefined);
     await updateConfiguration(CONFIG_KEYS.AIR_COMMAND, undefined);
+    await updateConfiguration(CONFIG_KEYS.POLL_MS, undefined);
+    await updateConfiguration(CONFIG_KEYS.ATTACH_DELAY, undefined);
+
     const newConfig = getConfiguration();
     vscode.window.showInformationMessage(`Configuration reset. Auto-detected process: ${newConfig.processName}`);
     if (!GlobalState.isRunning()) {

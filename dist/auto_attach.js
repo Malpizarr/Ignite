@@ -73,7 +73,7 @@ async function startAutoAttach() {
             }
             if (!state_1.GlobalState.isRunning())
                 continue;
-            await (0, helpers_1.sleep)(200);
+            await (0, helpers_1.sleep)(config.attachDelay);
             if (!(await (0, helpers_1.isProcessRunning)(pid))) {
                 continue;
             }

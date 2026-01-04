@@ -47,7 +47,7 @@ async function startAutoAttach() {
 
       if (!GlobalState.isRunning()) continue;
 
-      await sleep(200);
+      await sleep(config.attachDelay);
       if (!(await isProcessRunning(pid))) {
          continue;
       }

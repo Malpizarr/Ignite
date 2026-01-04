@@ -53,7 +53,6 @@ exports.CONFIG_KEYS = {
 };
 exports.DEFAULTS = {
     PROCESS_NAME: "ignite",
-    // AIR_COMMAND is defined in package.json
 };
 function getConfiguration() {
     const cfg = vscode.workspace.getConfiguration(exports.CONFIG_SECTION);
@@ -67,27 +66,23 @@ function getConfiguration() {
         folderName = vscode.workspace.workspaceFolders[0].name;
     }
     const processName = manualName ?? workspaceSetting ?? folderName ?? globalSetting;
-    const inspectCmd = cfg.inspect(exports.CONFIG_KEYS.AIR_COMMAND);
     const airCommand = state?.get(exports.CONFIG_KEYS.AIR_COMMAND) ?? cfg.get(exports.CONFIG_KEYS.AIR_COMMAND);
-    console.log("IGNITE CONFIG DEBUG:", {
-        key: exports.CONFIG_KEYS.AIR_COMMAND,
-        manual: state?.get(exports.CONFIG_KEYS.AIR_COMMAND),
-        workspaceValue: inspectCmd?.workspaceValue,
-        globalValue: inspectCmd?.globalValue,
-        defaultValue: inspectCmd?.defaultValue,
-        finalValue: airCommand
-    });
+    const pollMs = state?.get(exports.CONFIG_KEYS.POLL_MS) ?? cfg.get(exports.CONFIG_KEYS.POLL_MS);
+    const attachDelay = state?.get(exports.CONFIG_KEYS.ATTACH_DELAY) ?? cfg.get(exports.CONFIG_KEYS.ATTACH_DELAY);
     return {
         // processName: cfg.get<string>(CONFIG_KEYS.PROCESS_NAME, DEFAULTS.PROCESS_NAME),
         processName,
-        pollMs: cfg.get(exports.CONFIG_KEYS.POLL_MS),
+        pollMs,
         startAir: cfg.get(exports.CONFIG_KEYS.START_AIR),
         airCommand,
-        attachDelay: cfg.get(exports.CONFIG_KEYS.ATTACH_DELAY),
+        attachDelay,
     };
 }
 async function updateConfiguration(key, value, target = vscode.ConfigurationTarget.Workspace) {
-    if (key === exports.CONFIG_KEYS.PROCESS_NAME || key === exports.CONFIG_KEYS.AIR_COMMAND) {
+    if (key === exports.CONFIG_KEYS.PROCESS_NAME ||
+        key === exports.CONFIG_KEYS.AIR_COMMAND ||
+        key === exports.CONFIG_KEYS.POLL_MS ||
+        key === exports.CONFIG_KEYS.ATTACH_DELAY) {
         const state = state_1.GlobalState.getContext()?.workspaceState;
         if (state) {
             await state.update(key, value);

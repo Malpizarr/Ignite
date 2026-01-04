@@ -38,21 +38,28 @@ export function getConfiguration() {
 
   const processName = manualName ?? workspaceSetting ?? folderName ?? globalSetting;
 
-  const inspectCmd = cfg.inspect<string>(CONFIG_KEYS.AIR_COMMAND);
   const airCommand = state?.get<string>(CONFIG_KEYS.AIR_COMMAND) ?? cfg.get<string>(CONFIG_KEYS.AIR_COMMAND)!;
+
+  const pollMs = state?.get<number>(CONFIG_KEYS.POLL_MS) ?? cfg.get<number>(CONFIG_KEYS.POLL_MS)!;
+  const attachDelay = state?.get<number>(CONFIG_KEYS.ATTACH_DELAY) ?? cfg.get<number>(CONFIG_KEYS.ATTACH_DELAY)!;
 
   return {
     // processName: cfg.get<string>(CONFIG_KEYS.PROCESS_NAME, DEFAULTS.PROCESS_NAME),
     processName,
-    pollMs: cfg.get<number>(CONFIG_KEYS.POLL_MS)!,
+    pollMs,
     startAir: cfg.get<boolean>(CONFIG_KEYS.START_AIR)!,
     airCommand,
-    attachDelay: cfg.get<number>(CONFIG_KEYS.ATTACH_DELAY)!,
+    attachDelay,
   };
 }
 
 export async function updateConfiguration(key: string, value: any, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Workspace) {
-  if (key === CONFIG_KEYS.PROCESS_NAME || key === CONFIG_KEYS.AIR_COMMAND) {
+  if (
+    key === CONFIG_KEYS.PROCESS_NAME ||
+    key === CONFIG_KEYS.AIR_COMMAND ||
+    key === CONFIG_KEYS.POLL_MS ||
+    key === CONFIG_KEYS.ATTACH_DELAY
+  ) {
     const state = GlobalState.getContext()?.workspaceState;
     if (state) {
       await state.update(key, value);
