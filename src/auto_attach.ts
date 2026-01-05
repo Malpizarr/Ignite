@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
-import { ensureAirStarted, escapeForPgrepEre, setStatus, sleep, isProcessRunning, waitForPid, getProcessCommand } from "./helpers";
+import { isProcessRunning, waitForPid, getProcessCommand } from "./services/process";
+import { ensureAirStarted } from "./services/terminal";
+import { setStatus } from "./services/ui";
+import { sleep } from "./utils/common";
+import { buildProcessPattern } from "./utils/regex";
 import { GlobalState } from "./state";
 import { getConfiguration, COMMANDS } from "./config";
 
@@ -15,8 +19,7 @@ async function startAutoAttach() {
   const startAir = config.startAir;
   const airCommand = config.airCommand;
 
-  const nameEre = escapeForPgrepEre(procName);
-  const pattern = `tmp/${nameEre}($|\\s)|(^|[^a-zA-Z0-9_])${nameEre}($|[^a-zA-Z0-9_])`;
+  const pattern = buildProcessPattern(procName);
 
   if (startAir) ensureAirStarted(procName, airCommand);
 
@@ -43,11 +46,12 @@ async function startAutoAttach() {
         continue;
       }
 
-
-
       if (!GlobalState.isRunning()) continue;
 
       await sleep(config.attachDelay);
+
+      if (!GlobalState.isRunning()) continue;
+
       if (!(await isProcessRunning(pid))) {
          continue;
       }
@@ -57,15 +61,21 @@ async function startAutoAttach() {
 
       const wsFolder = vscode.workspace.workspaceFolders?.[0];
 
-      const ok = await vscode.debug.startDebugging(wsFolder, {
-        name: `Ignite ${procName} (PID ${pid})`,
-        type: "go",
-        request: "attach",
-        mode: "local",
-        processId: pid,
-        program: wsFolder?.uri.fsPath ?? "${workspaceFolder}",
-        showLog: true
-      } as vscode.DebugConfiguration);
+      let ok = false;
+      try {
+        ok = await vscode.debug.startDebugging(wsFolder, {
+          name: `Ignite ${procName} (PID ${pid})`,
+          type: "go",
+          request: "attach",
+          mode: "local",
+          processId: pid,
+          program: wsFolder?.uri.fsPath ?? "${workspaceFolder}",
+          showLog: true
+        } as vscode.DebugConfiguration);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to attach debugger: ${error}`);
+        ok = false;
+      }
 
       if (!ok) {
         setStatus(`$(error) Ignite: failed to attach (PID ${pid}).`, COMMANDS.OPEN);

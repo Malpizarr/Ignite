@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { setStatus, stopAll } from "./helpers";
+import { setStatus } from "./services/ui";
+import { stopAll } from "./session";
 import { startAutoAttach } from "./auto_attach";
 import { GlobalState } from "./state";
 import { getConfiguration, updateConfiguration, COMMANDS, CONFIG_KEYS } from "./config";
@@ -26,7 +27,16 @@ async function openMiniUI() {
     const next = await vscode.window.showInputBox({
       title: "Process / Binary Name",
       value: currentName,
-      prompt: "e.g. api, worker, payments... (used as PROC_NAME and for process matching)"
+      prompt: "e.g. api, worker, payments... (used as PROC_NAME and for process matching)",
+      validateInput: (value) => {
+        if (!value || value.trim().length === 0) {
+          return "Process name cannot be empty";
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(value.trim())) {
+          return "Process name can only contain alphanumeric characters, underscores, and hyphens";
+        }
+        return null;
+      }
     });
     if (!next) return;
 
@@ -43,7 +53,13 @@ async function openMiniUI() {
     const next = await vscode.window.showInputBox({
       title: "Start Command (Watcher)",
       value: currentCmd,
-      prompt: "e.g. make run, air, go run main.go..."
+      prompt: "e.g. make run, air, go run main.go...",
+      validateInput: (value) => {
+        if (!value || value.trim().length === 0) {
+          return "Command cannot be empty";
+        }
+        return null;
+      }
     });
     if (!next) return;
 
@@ -67,7 +83,20 @@ async function openMiniUI() {
       const val = await vscode.window.showInputBox({
         title: "Poll Interval (ms)",
         value: config.pollMs.toString(),
-        prompt: "How often to check for the process."
+        prompt: "Frequency to search for new process instances. Lower = faster detection, higher CPU usage. Recommended: 500ms",
+        validateInput: (value) => {
+          const ms = parseInt(value, 10);
+          if (isNaN(ms)) {
+            return "Please enter a valid number";
+          }
+          if (ms <= 0) {
+            return "Poll interval must be greater than 0";
+          }
+          if (ms < 100) {
+            return "Poll interval should be at least 100ms to avoid high CPU usage";
+          }
+          return null;
+        }
       });
       if (val) {
         const ms = parseInt(val, 10);
@@ -82,7 +111,20 @@ async function openMiniUI() {
       const val = await vscode.window.showInputBox({
         title: "Attach Delay (ms)",
         value: config.attachDelay.toString(),
-        prompt: "Delay after detection before attaching."
+        prompt: "Wait time after detecting process before attaching debugger. Prevents 'stub exited' errors during compilation. Increase if process restarts too quickly.",
+        validateInput: (value) => {
+          const ms = parseInt(value, 10);
+          if (isNaN(ms)) {
+            return "Please enter a valid number";
+          }
+          if (ms < 0) {
+            return "Attach delay cannot be negative";
+          }
+          if (ms > 30000) {
+            return "Attach delay should not exceed 30 seconds";
+          }
+          return null;
+        }
       });
       if (val) {
         const ms = parseInt(val, 10);

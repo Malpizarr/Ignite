@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { setStatus, stopAll, deactivate as deactivateHelper } from "./helpers";
+import { setStatus } from "./services/ui";
+import { stopAll, deactivate as deactivateHelper } from "./session";
 import { startAutoAttach } from "./auto_attach";
 import { openMiniUI } from "./ui";
 import { getConfiguration, COMMANDS } from "./config";

@@ -33,22 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activate = activate;
+exports.stopAll = stopAll;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
-const ui_1 = require("./services/ui");
-const session_1 = require("./session");
-const auto_attach_1 = require("./auto_attach");
-const ui_2 = require("./ui");
-const config_1 = require("./config");
 const state_1 = require("./state");
-function activate(context) {
-    state_1.GlobalState.setContext(context);
-    context.subscriptions.push(vscode.commands.registerCommand(config_1.COMMANDS.START, () => (0, auto_attach_1.startAutoAttach)()), vscode.commands.registerCommand(config_1.COMMANDS.OPEN, () => (0, ui_2.openMiniUI)()), vscode.commands.registerCommand(config_1.COMMANDS.STOP, () => (0, session_1.stopAll)()));
-    const config = (0, config_1.getConfiguration)();
-    const currentName = config.processName;
-    (0, ui_1.setStatus)(`$(play) Ignite: ${currentName}`, config_1.COMMANDS.OPEN, "Click to start or configure");
+async function stopAll() {
+    state_1.GlobalState.setRunning(false);
+    vscode.window.showInformationMessage("Ignite stopped.");
 }
 function deactivate() {
-    (0, session_1.deactivate)();
+    state_1.GlobalState.setRunning(false);
+    state_1.GlobalState.getAirTerminal()?.dispose();
+    state_1.GlobalState.getStatusItem()?.dispose();
+    state_1.GlobalState.disposeAll();
 }
