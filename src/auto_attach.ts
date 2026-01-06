@@ -13,18 +13,32 @@ async function startAutoAttach() {
     return;
   }
 
+  const mode = await vscode.window.showQuickPick(
+    [
+      { label: "$(rocket) Start + Attach", value: "start", description: "Start process and auto-attach debugger" },
+      { label: "$(debug-alt) Attach Only", value: "attach", description: "Attach to running process only" }
+    ],
+    { placeHolder: "Choose start mode" }
+  );
+
+  if (!mode) return;
+
   const config = getConfiguration();
   const procName = config.processName;
   const pollMs = config.pollMs;
-  const startAir = config.startAir;
   const airCommand = config.airCommand;
 
   const pattern = buildProcessPattern(procName);
 
-  if (startAir) ensureAirStarted(procName, airCommand);
+  if (mode.value === "start") {
+    ensureAirStarted(procName, airCommand);
+  }
 
   GlobalState.setRunning(true);
-  setStatus(`$(debug-disconnect) Ignite: waiting for "${procName}"...`, COMMANDS.OPEN, "Waiting for process... Click for options");
+  const statusMsg = mode.value === "start"
+    ? `$(loading~spin) Ignite: starting "${procName}"...`
+    : `$(debug-disconnect) Ignite: looking for "${procName}"...`;
+  setStatus(statusMsg, COMMANDS.OPEN, "Waiting for process... Click for options");
 
   const endedSessions = new Set<string>();
   const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));

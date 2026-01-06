@@ -6,6 +6,8 @@ It intelligently detects your running application processâ€”even after reloadsâ€
 
 ## Features
 
+- **Flexible Start Modes:**
+  Choose between launching your process and attaching, or simply attaching to an already running process.
 - **Auto-Attach Debugger:**
   Automatically finds your Go process (e.g., `api`, `worker`) and attaches the VS Code debugger to it.
 - **Hot-Reload Support:**
@@ -26,7 +28,7 @@ It intelligently detects your running application processâ€”even after reloadsâ€
    ```
    Or manually install it via VS Code:
    ```bash
-   code --install-extension ignite-0.0.3.vsix
+   code --install-extension ignite-0.0.4.vsix
    ```
 
 ## Usage
@@ -38,7 +40,9 @@ Ignite adds a status bar item and a set of commands to control the debugging ses
 Open the command palette (<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) and type `Ignite`:
 
 - **Ignite: Process (Start/Stop):** Opens the Control Panel to manage the session.
-- **Ignite: Start Auto-Attach:** Manually starts the monitoring loop.
+- **Ignite: Start Auto-Attach:** Starts the monitoring loop with two options:
+- **Start + Attach:** Launches your process (via configured command) and auto-attaches the debugger
+- **Attach Only:** Attaches to an already running process without starting a new terminal
 - **Ignite: Stop Auto-Attach:** Stops monitoring.
 
 ### Control Panel
@@ -63,17 +67,17 @@ If you prefer `settings.json`:
 {
   "autoAttachUI.startCommand": "make run",
   "autoAttachUI.processName": "my-api-binary",
-  "autoAttachUI.pollMs": 300,
-  "autoAttachUI.attachDelay": 200
+  "autoAttachUI.pollMs": 500,
+  "autoAttachUI.attachDelay": 2000
 }
 ```
 
-| Setting        | Default         | Description                                                             |
-| :------------- | :-------------- | :---------------------------------------------------------------------- |
-| `startCommand` | `make run`      | The command to start your project (e.g. `air`, `go run main.go`).       |
-| `processName`  | `(Folder Name)` | The name of the binary to attach to.                                    |
-| `pollMs`       | `500`           | How often (in ms) to check for the process.                             |
-| `attachDelay`  | `2000`          | Delay (in ms) after detecting the process before attaching debug probe. |
+| Setting        | Default         | Description                                                                                                                                                                         |
+| :------------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `startCommand` | `make run`      | The command to start your project (e.g. `air`, `go run main.go`).                                                                                                                   |
+| `processName`  | `(Folder Name)` | The name of the binary to attach to.                                                                                                                                                |
+| `pollMs`       | `500`           | How often (in ms) to check for the process. Used during initial search and after reloads.                                                                                           |
+| `attachDelay`  | `2000`          | Delay (in ms) after detecting the process before attaching debugger. Increase to 5000-10000 if your process requires authentication (TouchID/password) or takes time to initialize. |
 
 ## Development
 
