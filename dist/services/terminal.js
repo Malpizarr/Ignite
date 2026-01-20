@@ -36,9 +36,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAirStarted = ensureAirStarted;
 const vscode = __importStar(require("vscode"));
 const state_1 = require("../state");
+function isTerminalActive(terminal) {
+    return vscode.window.terminals.includes(terminal);
+}
+function findExistingAirTerminal(procName) {
+    const terminalName = `air (${procName})`;
+    return vscode.window.terminals.find(t => t.name === terminalName);
+}
+function setupTerminalTracking(terminal) {
+    const terminalDisposable = vscode.window.onDidCloseTerminal((closedTerminal) => {
+        if (closedTerminal === terminal) {
+            state_1.GlobalState.setAirTerminal(undefined);
+            state_1.GlobalState.removeDisposable(terminalDisposable);
+            terminalDisposable.dispose();
+        }
+    });
+    state_1.GlobalState.addDisposable(terminalDisposable);
+}
 function ensureAirStarted(procName, airCommand) {
-    if (state_1.GlobalState.getAirTerminal())
+    const storedTerminal = state_1.GlobalState.getAirTerminal();
+    if (storedTerminal) {
+        if (isTerminalActive(storedTerminal)) {
+            storedTerminal.show(true);
+            storedTerminal.sendText(airCommand, true);
+            return;
+        }
+        state_1.GlobalState.setAirTerminal(undefined);
+    }
+    const existingTerminal = findExistingAirTerminal(procName);
+    if (existingTerminal) {
+        setupTerminalTracking(existingTerminal);
+        state_1.GlobalState.setAirTerminal(existingTerminal);
+        existingTerminal.show(true);
+        existingTerminal.sendText(airCommand, true);
         return;
+    }
     const t = vscode.window.createTerminal({
         name: `air (${procName})`,
         env: {
@@ -46,14 +78,7 @@ function ensureAirStarted(procName, airCommand) {
             PROC_NAME: procName
         }
     });
-    const terminalDisposable = vscode.window.onDidCloseTerminal((closedTerminal) => {
-        if (closedTerminal === t) {
-            state_1.GlobalState.setAirTerminal(undefined);
-            state_1.GlobalState.removeDisposable(terminalDisposable);
-            terminalDisposable.dispose();
-        }
-    });
-    state_1.GlobalState.addDisposable(terminalDisposable);
+    setupTerminalTracking(t);
     state_1.GlobalState.setAirTerminal(t);
     t.show(true);
     t.sendText(airCommand, true);
