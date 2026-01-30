@@ -47,50 +47,36 @@ async function startAutoAttach() {
         vscode.window.showInformationMessage("Already running.");
         return;
     }
-    const mode = await vscode.window.showQuickPick([
-        { label: "$(rocket) Start + Attach", value: "start", description: "Start process and auto-attach debugger" },
-        { label: "$(debug-alt) Attach Only", value: "attach", description: "Attach to running process only" }
-    ], { placeHolder: "Choose start mode" });
-    if (!mode)
-        return;
     const config = (0, config_1.getConfiguration)();
     const procName = config.processName;
     const pollMs = config.pollMs;
     const airCommand = config.airCommand;
     const pattern = (0, regex_1.buildProcessPattern)(procName);
-    if (mode.value === "start") {
+    const existingPid = await (0, process_1.pgrepNewestPid)(pattern);
+    const processExists = existingPid && !(await (0, process_1.isAirOrBuildProcess)(existingPid));
+    const shouldStart = !processExists;
+    if (shouldStart) {
         (0, terminal_1.ensureAirStarted)(procName, airCommand);
     }
     state_1.GlobalState.setRunning(true);
-    const statusMsg = mode.value === "start"
+    const statusMsg = shouldStart
         ? `$(loading~spin) Ignite: starting "${procName}"...`
-        : `$(debug-disconnect) Ignite: looking for "${procName}"...`;
+        : `$(debug-disconnect) Ignite: attaching to "${procName}"...`;
     (0, ui_1.setStatus)(statusMsg, config_1.COMMANDS.OPEN, "Waiting for process... Click for options");
     const endedSessions = new Set();
     const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
     let lastPid = 0;
     try {
         while (state_1.GlobalState.isRunning()) {
-            const pid = await (0, process_1.waitForPid)(pattern, pollMs);
+            const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs);
             if (!state_1.GlobalState.isRunning() || !pid)
                 break;
             if (pid === lastPid) {
                 await (0, common_1.sleep)(pollMs);
                 continue;
             }
-            const cmd = await (0, process_1.getProcessCommand)(pid);
-            if (/(^|\/|\\)\.?air(\.exe)?($|\s)/.test(cmd) || /(^|\/|\\)go(\.exe)?\s+build/.test(cmd)) {
-                await (0, common_1.sleep)(pollMs);
-                continue;
-            }
             if (!state_1.GlobalState.isRunning())
                 continue;
-            await (0, common_1.sleep)(config.attachDelay);
-            if (!state_1.GlobalState.isRunning())
-                continue;
-            if (!(await (0, process_1.isProcessRunning)(pid))) {
-                continue;
-            }
             endedSessions.clear();
             (0, ui_1.setStatus)(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, config_1.COMMANDS.OPEN);
             const wsFolder = vscode.workspace.workspaceFolders?.[0];

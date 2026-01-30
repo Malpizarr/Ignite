@@ -59,3 +59,48 @@ export async function waitForPid(pattern: string, pollMs: number): Promise<numbe
   }
   return null;
 }
+
+export async function isAirOrBuildProcess(pid: number): Promise<boolean> {
+  const cmd = await getProcessCommand(pid);
+  return /(^|\/|\\)\.?air(\.exe)?($|\s)/.test(cmd) || /(^|\/|\\)go(\.exe)?\s+build/.test(cmd);
+}
+
+export async function waitForStableProcess(pattern: string, pollMs: number, stabilityChecks: number = 3): Promise<number | null> {
+  let candidatePid: number | null = null;
+  let stableCount = 0;
+
+  while (GlobalState.isRunning()) {
+    const pid = await pgrepNewestPid(pattern);
+
+    if (!pid) {
+      candidatePid = null;
+      stableCount = 0;
+      await sleep(pollMs);
+      continue;
+    }
+
+    if (await isAirOrBuildProcess(pid)) {
+      candidatePid = null;
+      stableCount = 0;
+      await sleep(pollMs);
+      continue;
+    }
+
+    if (pid === candidatePid) {
+      stableCount++;
+      if (stableCount >= stabilityChecks) {
+        const stillRunning = await isProcessRunning(pid);
+        if (stillRunning) {
+          return pid;
+        }
+      }
+    } else {
+      candidatePid = pid;
+      stableCount = 1;
+    }
+
+    await sleep(Math.min(pollMs, 100));
+  }
+
+  return null;
+}

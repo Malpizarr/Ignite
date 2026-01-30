@@ -47,7 +47,6 @@ async function openMiniUI() {
         { label: state_1.GlobalState.isRunning() ? "$(stop) Stop" : "$(play) Start", description: `Process: ${currentName}` },
         { label: "$(pencil) Change process", description: `Current: ${currentName}` },
         { label: "$(gear) Change command", description: `Current: ${config.airCommand}` },
-        { label: "$(settings) Advanced Settings", description: "Poll Interval & Attach Delay" },
         { label: "$(trash) Reset terminal", description: "Closes the internal Air terminal if created by extension" },
         { label: "$(sync) Reset Config", description: "Clears manual process name and start command" }
     ], { title: "Ignite: Control Panel", placeHolder: "Select an action" });
@@ -96,74 +95,10 @@ async function openMiniUI() {
         vscode.window.showInformationMessage(`Command updated to: ${next.trim()}`);
         return;
     }
-    if (pick.label.includes("Advanced Settings")) {
-        const action = await vscode.window.showQuickPick([
-            { label: "Poll Interval", description: `Current: ${config.pollMs}ms` },
-            { label: "Attach Delay", description: `Current: ${config.attachDelay}ms` }
-        ], { title: "Ignite: Advanced Settings" });
-        if (!action)
-            return;
-        if (action.label === "Poll Interval") {
-            const val = await vscode.window.showInputBox({
-                title: "Poll Interval (ms)",
-                value: config.pollMs.toString(),
-                prompt: "Frequency to search for new process instances. Lower = faster detection, higher CPU usage. Recommended: 500ms",
-                validateInput: (value) => {
-                    const ms = parseInt(value, 10);
-                    if (isNaN(ms)) {
-                        return "Please enter a valid number";
-                    }
-                    if (ms <= 0) {
-                        return "Poll interval must be greater than 0";
-                    }
-                    if (ms < 100) {
-                        return "Poll interval should be at least 100ms to avoid high CPU usage";
-                    }
-                    return null;
-                }
-            });
-            if (val) {
-                const ms = parseInt(val, 10);
-                if (!isNaN(ms) && ms > 0) {
-                    await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.POLL_MS, ms);
-                    vscode.window.showInformationMessage(`Poll Interval updated to ${ms}ms`);
-                }
-            }
-        }
-        if (action.label === "Attach Delay") {
-            const val = await vscode.window.showInputBox({
-                title: "Attach Delay (ms)",
-                value: config.attachDelay.toString(),
-                prompt: "Wait time after detecting process before attaching debugger. Prevents 'stub exited' errors during compilation. Increase if process restarts too quickly.",
-                validateInput: (value) => {
-                    const ms = parseInt(value, 10);
-                    if (isNaN(ms)) {
-                        return "Please enter a valid number";
-                    }
-                    if (ms < 0) {
-                        return "Attach delay cannot be negative";
-                    }
-                    if (ms > 30000) {
-                        return "Attach delay should not exceed 30 seconds";
-                    }
-                    return null;
-                }
-            });
-            if (val) {
-                const ms = parseInt(val, 10);
-                if (!isNaN(ms) && ms >= 0) {
-                    await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.ATTACH_DELAY, ms);
-                    vscode.window.showInformationMessage(`Attach Delay updated to ${ms}ms`);
-                }
-            }
-        }
-        return;
-    }
     if (pick.label.includes("Reset Config")) {
         await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.PROCESS_NAME, undefined);
         await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.AIR_COMMAND, undefined);
         await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.POLL_MS, undefined);
-        await (0, config_1.updateConfiguration)(config_1.CONFIG_KEYS.ATTACH_DELAY, undefined);
         const newConfig = (0, config_1.getConfiguration)();
         vscode.window.showInformationMessage(`Configuration reset. Auto-detected process: ${newConfig.processName}`);
         if (!state_1.GlobalState.isRunning()) {

@@ -49,7 +49,6 @@ exports.CONFIG_KEYS = {
     POLL_MS: "pollMs",
     START_AIR: "startAir",
     AIR_COMMAND: "startCommand",
-    ATTACH_DELAY: "attachDelay",
 };
 exports.DEFAULTS = {
     PROCESS_NAME: "ignite",
@@ -68,21 +67,17 @@ function getConfiguration() {
     const processName = manualName ?? workspaceSetting ?? folderName ?? globalSetting;
     const airCommand = state?.get(exports.CONFIG_KEYS.AIR_COMMAND) ?? cfg.get(exports.CONFIG_KEYS.AIR_COMMAND);
     const pollMs = state?.get(exports.CONFIG_KEYS.POLL_MS) ?? cfg.get(exports.CONFIG_KEYS.POLL_MS);
-    const attachDelay = state?.get(exports.CONFIG_KEYS.ATTACH_DELAY) ?? cfg.get(exports.CONFIG_KEYS.ATTACH_DELAY);
     return {
-        // processName: cfg.get<string>(CONFIG_KEYS.PROCESS_NAME, DEFAULTS.PROCESS_NAME),
         processName,
         pollMs,
         startAir: cfg.get(exports.CONFIG_KEYS.START_AIR),
         airCommand,
-        attachDelay,
     };
 }
 async function updateConfiguration(key, value, target = vscode.ConfigurationTarget.Workspace) {
     if (key === exports.CONFIG_KEYS.PROCESS_NAME ||
         key === exports.CONFIG_KEYS.AIR_COMMAND ||
-        key === exports.CONFIG_KEYS.POLL_MS ||
-        key === exports.CONFIG_KEYS.ATTACH_DELAY) {
+        key === exports.CONFIG_KEYS.POLL_MS) {
         const state = state_1.GlobalState.getContext()?.workspaceState;
         if (state) {
             await state.update(key, value);

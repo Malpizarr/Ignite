@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { isProcessRunning, waitForPid, getProcessCommand } from "./services/process";
+import { isProcessRunning, waitForStableProcess, pgrepNewestPid, isAirOrBuildProcess } from "./services/process";
 import { ensureAirStarted } from "./services/terminal";
 import { setStatus } from "./services/ui";
 import { sleep } from "./utils/common";
@@ -13,16 +13,6 @@ async function startAutoAttach() {
     return;
   }
 
-  const mode = await vscode.window.showQuickPick(
-    [
-      { label: "$(rocket) Start + Attach", value: "start", description: "Start process and auto-attach debugger" },
-      { label: "$(debug-alt) Attach Only", value: "attach", description: "Attach to running process only" }
-    ],
-    { placeHolder: "Choose start mode" }
-  );
-
-  if (!mode) return;
-
   const config = getConfiguration();
   const procName = config.processName;
   const pollMs = config.pollMs;
@@ -30,14 +20,19 @@ async function startAutoAttach() {
 
   const pattern = buildProcessPattern(procName);
 
-  if (mode.value === "start") {
+  const existingPid = await pgrepNewestPid(pattern);
+  const processExists = existingPid && !(await isAirOrBuildProcess(existingPid));
+
+  const shouldStart = !processExists;
+
+  if (shouldStart) {
     ensureAirStarted(procName, airCommand);
   }
 
   GlobalState.setRunning(true);
-  const statusMsg = mode.value === "start"
+  const statusMsg = shouldStart
     ? `$(loading~spin) Ignite: starting "${procName}"...`
-    : `$(debug-disconnect) Ignite: looking for "${procName}"...`;
+    : `$(debug-disconnect) Ignite: attaching to "${procName}"...`;
   setStatus(statusMsg, COMMANDS.OPEN, "Waiting for process... Click for options");
 
   const endedSessions = new Set<string>();
@@ -46,7 +41,7 @@ async function startAutoAttach() {
 
   try {
     while (GlobalState.isRunning()) {
-      const pid = await waitForPid(pattern, pollMs);
+      const pid = await waitForStableProcess(pattern, pollMs);
       if (!GlobalState.isRunning() || !pid) break;
 
       if (pid === lastPid) {
@@ -54,21 +49,7 @@ async function startAutoAttach() {
         continue;
       }
 
-      const cmd = await getProcessCommand(pid);
-      if (/(^|\/|\\)\.?air(\.exe)?($|\s)/.test(cmd) || /(^|\/|\\)go(\.exe)?\s+build/.test(cmd)) {
-        await sleep(pollMs);
-        continue;
-      }
-
       if (!GlobalState.isRunning()) continue;
-
-      await sleep(config.attachDelay);
-
-      if (!GlobalState.isRunning()) continue;
-
-      if (!(await isProcessRunning(pid))) {
-         continue;
-      }
 
       endedSessions.clear();
       setStatus(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, COMMANDS.OPEN);

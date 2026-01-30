@@ -1,6 +1,6 @@
 VSCE = npx vsce
 CODE = code
-VSIX = ignite-0.0.5.vsix
+VSIX = ignite-1.0.0.vsix
 
 install:
 	-$(CODE) --uninstall-extension local.ignite || true

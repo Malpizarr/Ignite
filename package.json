@@ -2,12 +2,12 @@
   "name": "ignite",
   "displayName": "Ignite",
   "description": "Auto-attach debugger with Air hot-reload.",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Debuggers", "Other"],
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -27,7 +27,7 @@
         "autoAttachUI.pollMs": {
           "type": "number",
           "default": 500,
-          "description": "Polling interval for finding the process."
+          "description": "Polling interval (ms) for process detection. Advanced users only."
         },
         "autoAttachUI.startAir": {
           "type": "boolean",
@@ -38,11 +38,6 @@
           "type": "string",
           "default": "make run",
           "description": "Command used to start the process (watcher/build)."
-        },
-        "autoAttachUI.attachDelay": {
-          "type": "number",
-          "default": 2000,
-          "description": "Delay (ms) after detecting the process before attaching. Increase if you see 'stub exited' errors."
         }
       }
     }

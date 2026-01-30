@@ -39,6 +39,14 @@ const vscode = __importStar(require("vscode"));
 const state_1 = require("./state");
 async function stopAll() {
     state_1.GlobalState.setRunning(false);
+    const activeSessions = vscode.debug.activeDebugSession
+        ? [vscode.debug.activeDebugSession]
+        : [];
+    for (const session of activeSessions) {
+        if (session.name.startsWith("Ignite")) {
+            await vscode.debug.stopDebugging(session);
+        }
+    }
     vscode.window.showInformationMessage("Ignite stopped.");
 }
 function deactivate() {

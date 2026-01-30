@@ -14,7 +14,6 @@ export const CONFIG_KEYS = {
   POLL_MS: "pollMs",
   START_AIR: "startAir",
   AIR_COMMAND: "startCommand",
-  ATTACH_DELAY: "attachDelay",
 };
 
 export const DEFAULTS = {
@@ -41,15 +40,12 @@ export function getConfiguration() {
   const airCommand = state?.get<string>(CONFIG_KEYS.AIR_COMMAND) ?? cfg.get<string>(CONFIG_KEYS.AIR_COMMAND)!;
 
   const pollMs = state?.get<number>(CONFIG_KEYS.POLL_MS) ?? cfg.get<number>(CONFIG_KEYS.POLL_MS)!;
-  const attachDelay = state?.get<number>(CONFIG_KEYS.ATTACH_DELAY) ?? cfg.get<number>(CONFIG_KEYS.ATTACH_DELAY)!;
 
   return {
-    // processName: cfg.get<string>(CONFIG_KEYS.PROCESS_NAME, DEFAULTS.PROCESS_NAME),
     processName,
     pollMs,
     startAir: cfg.get<boolean>(CONFIG_KEYS.START_AIR)!,
     airCommand,
-    attachDelay,
   };
 }
 
@@ -57,8 +53,7 @@ export async function updateConfiguration(key: string, value: any, target: vscod
   if (
     key === CONFIG_KEYS.PROCESS_NAME ||
     key === CONFIG_KEYS.AIR_COMMAND ||
-    key === CONFIG_KEYS.POLL_MS ||
-    key === CONFIG_KEYS.ATTACH_DELAY
+    key === CONFIG_KEYS.POLL_MS
   ) {
     const state = GlobalState.getContext()?.workspaceState;
     if (state) {
