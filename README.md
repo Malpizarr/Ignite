@@ -24,7 +24,7 @@ It detects your running application process—even after reloads—and attaches 
    ```
    Or manually:
    ```bash
-   code --install-extension ignite-1.1.0.vsix --force
+   code --install-extension ignite-1.1.1.vsix --force
    ```
 
 No extra setup is needed for update checks; the extension uses the official GitHub repo.
@@ -95,4 +95,4 @@ Manual steps:
 - **Compile:** `npm run compile`
 - **Watch:** `npm run watch`
 - **Package:** `npx vsce package`
-- **Install:** `make install` (uses `ignite-1.1.0.vsix` by default; adjust `VSIX` in the Makefile if needed)
+- **Install:** `make install` (uses `ignite-1.1.1.vsix` by default; adjust `VSIX` in the Makefile if needed)

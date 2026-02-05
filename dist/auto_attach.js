@@ -79,6 +79,15 @@ async function startAutoAttach() {
             if (!state_1.GlobalState.isRunning())
                 continue;
             if (afterReload) {
+                const existingPidAfterReload = await (0, process_1.pgrepNewestPid)(pattern);
+                const processExistsAfterReload = existingPidAfterReload && !(await (0, process_1.isAirOrBuildProcess)(existingPidAfterReload));
+                if (!processExistsAfterReload) {
+                    (0, ui_1.setStatus)(`$(loading~spin) Ignite: verifying command after reload…`, config_1.COMMANDS.OPEN);
+                    (0, terminal_1.ensureAirStarted)(procName, airCommand);
+                    await (0, common_1.sleep)(500);
+                    afterReload = false;
+                    continue;
+                }
                 await (0, common_1.sleep)(500);
                 afterReload = false;
             }
@@ -94,15 +103,15 @@ async function startAutoAttach() {
                     mode: "local",
                     processId: pid,
                     program: wsFolder?.uri.fsPath ?? "${workspaceFolder}",
-                    showLog: true
+                    showLog: true,
+                    showUser: false
                 });
             }
             catch (error) {
-                vscode.window.showErrorMessage(`Failed to attach debugger: ${error}`);
                 ok = false;
             }
             if (!ok) {
-                (0, ui_1.setStatus)(`$(error) Ignite: failed to attach (PID ${pid}).`, config_1.COMMANDS.OPEN);
+                (0, ui_1.setStatus)(`$(error) Ignite: please check terminal, error starting "${procName}".`, config_1.COMMANDS.OPEN, `Attach failed (PID ${pid}). Check terminal for panic or process errors.`);
                 await (0, common_1.sleep)(500);
                 continue;
             }
