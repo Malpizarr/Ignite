@@ -4,10 +4,17 @@ import { stopAll } from "./session";
 import { startAutoAttach } from "./auto_attach";
 import { GlobalState } from "./state";
 import { getConfiguration, updateConfiguration, COMMANDS, CONFIG_KEYS } from "./config";
+import { Updater } from "./services/updater";
+
+function getExtensionVersion(): string {
+  const ext = vscode.extensions.getExtension("local.ignite");
+  return ext?.packageJSON?.version ?? "?";
+}
 
 async function openMiniUI() {
   const config = getConfiguration();
   const currentName = config.processName;
+  const version = getExtensionVersion();
 
   const pick = await vscode.window.showQuickPick(
     [
@@ -15,9 +22,10 @@ async function openMiniUI() {
       { label: "$(pencil) Change process", description: `Current: ${currentName}` },
       { label: "$(gear) Change command", description: `Current: ${config.airCommand}` },
       { label: "$(trash) Reset terminal", description: "Closes the internal Air terminal if created by extension" },
-      { label: "$(sync) Reset Config", description: "Clears manual process name and start command" }
+      { label: "$(sync) Reset Config", description: "Clears manual process name and start command" },
+      { label: "$(cloud-download) Check for updates", description: `Current: v${version} · Download and install if available` }
     ],
-    { title: "Ignite: Control Panel", placeHolder: "Select an action" }
+    { title: `Ignite: Control Panel (v${version})`, placeHolder: "Select an action" }
   );
 
   if (!pick) return;
@@ -89,6 +97,11 @@ async function openMiniUI() {
     } else {
       vscode.window.showInformationMessage("No Air terminal found to reset.");
     }
+    return;
+  }
+
+  if (pick.label.includes("Check for updates")) {
+    await Updater.checkForUpdates(true);
     return;
   }
 

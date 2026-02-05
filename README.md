@@ -1,105 +1,98 @@
 # Ignite
 
-Ignite is a VS Code and Cursor extension designed to automate the debugger attachment process when using hot-reloading tools like `Air`.
+Ignite is a VS Code and Cursor extension that automates debugger attachment when using hot-reloading tools like **Air**.
 
-It intelligently detects your running application process—even after reloads—and attaches the debugger instantly, saving you from manually restarting the debug session every time you save a file.
+It detects your running application process—even after reloads—and attaches the debugger so you don’t have to restart the debug session on every save.
 
 ## Features
 
-- **Flexible Start Modes:**
-  Choose between launching your process and attaching, or simply attaching to an already running process.
-- **Auto-Attach Debugger:**
-  Automatically finds your Go process (e.g., `api`, `worker`) and attaches the VS Code debugger to it.
-- **Hot-Reload Support:**
-  Works seamlessly with `Air`. When your app rebuilds and restarts (PID change), Ignite detects the new process and re-attaches instantly.
-- **Smart Detection:**
-  Distinguishes between the build watcher (`air`) and your actual binary, ensuring it only attaches to the running application.
-- **Zero Configuration (mostly):**
-  Automatically infers the process name from your workspace folder.
+- **Flexible start modes:** Launch your process and attach, or attach to an already running process.
+- **Auto-attach:** Finds your Go process (e.g. `api`, `worker`) and attaches the VS Code debugger.
+- **Hot-reload friendly:** Works with Air; when the app restarts (new PID), Ignite re-attaches automatically.
+- **Smart detection:** Targets your binary, not the `air` watcher.
+- **Low config:** Infers process name from the workspace folder.
+- **Built-in updates:** Checks [GitHub Releases](https://github.com/Malpizarr/Ignite/releases) for new versions and can update from the Control Panel (public repo only).
 
 ## Installation
 
-### From VSIX (Local)
+### From VSIX
 
-1. Build the extension locally or download the `.vsix` file.
-2. Run the following command in your terminal:
+1. Get the `.vsix` from [Releases](https://github.com/Malpizarr/Ignite/releases) or build it locally.
+2. Install from the terminal:
    ```bash
    make install
    ```
-   Or manually install it via VS Code:
+   Or manually:
    ```bash
-   code --install-extension ignite-0.0.4.vsix
+   code --install-extension ignite-1.1.0.vsix --force
    ```
+
+No extra setup is needed for update checks; the extension uses the official GitHub repo.
 
 ## Usage
 
-Ignite adds a status bar item and a set of commands to control the debugging session.
+Ignite adds a status bar item and commands to control the session.
 
 ### Commands
 
-Open the command palette (<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) and type `Ignite`:
+Command palette (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>), then type **Ignite**:
 
-- **Ignite: Process (Start/Stop):** Opens the Control Panel to manage the session.
-- **Ignite: Start Auto-Attach:** Starts the monitoring loop with two options:
-- **Start + Attach:** Launches your process (via configured command) and auto-attaches the debugger
-- **Attach Only:** Attaches to an already running process without starting a new terminal
-- **Ignite: Stop Auto-Attach:** Stops monitoring.
+| Command                          | Description                                                  |
+| -------------------------------- | ------------------------------------------------------------ |
+| **Ignite: Process (Start/Stop)** | Opens the Control Panel.                                     |
+| **Ignite: Start Auto-Attach**    | Starts monitoring (Start+Attach or Attach only).             |
+| **Ignite: Stop Auto-Attach**     | Stops monitoring.                                            |
+| **Ignite: Check for updates**    | Checks for a new version and offers to download and install. |
 
 ### Control Panel
 
-Clicking on the status bar item `$(play) Ignite: <process-name>` opens the **Control Panel**, where you can:
+Click the status bar item **Ignite: &lt;process-name&gt;** to open the **Control Panel** (title shows current version, e.g. _Ignite: Control Panel (v1.1.0)_):
 
-1. **Start/Stop:** Toggle the auto-attach loop.
-2. **Change Process:** Manually override the binary name to look for (e.g., change from `ignite` to `payments-service`).
-3. **Change Command:** Update the command used to start your watcher (default: `make run`).
-4. **Advanced Settings:** Configure `Poll Interval` and `Attach Delay`.
-5. **Reset Config:** Clear manual overrides and return to auto-detection (Folder Name).
+1. **Start / Stop** — Toggle the auto-attach loop.
+2. **Change process** — Override the binary name (e.g. `api`, `worker`).
+3. **Change command** — Command that starts the watcher (default: `make run`).
+4. **Reset terminal** — Close the internal Air terminal created by the extension.
+5. **Reset Config** — Clear manual process name and start command.
+6. **Check for updates** — Check for a new version, then download and install from the panel.
+
+When a new version is available, a notification appears with **Update** / **Later**. Choosing **Update** downloads and installs the new `.vsix`, then you can **Reload** the window.
+
+Updates are checked automatically a few seconds after startup and then every 24 hours (can be turned off in settings).
 
 ## Configuration
 
-You can configure per-workspace using `.vscode/settings.json`, although the UI Control Panel is the recommended way (it saves to Workspace State without dirtying your settings files).
-
-### Settings
-
-If you prefer `settings.json`:
+Use the Control Panel for most options, or configure in `.vscode/settings.json`:
 
 ```json
 {
   "autoAttachUI.startCommand": "make run",
   "autoAttachUI.processName": "my-api-binary",
   "autoAttachUI.pollMs": 500,
-  "autoAttachUI.attachDelay": 2000
+  "autoAttachUI.autoUpdate": true
 }
 ```
 
-| Setting        | Default         | Description                                                                                                                                                                         |
-| :------------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `startCommand` | `make run`      | The command to start your project (e.g. `air`, `go run main.go`).                                                                                                                   |
-| `processName`  | `(Folder Name)` | The name of the binary to attach to.                                                                                                                                                |
-| `pollMs`       | `500`           | How often (in ms) to check for the process. Used during initial search and after reloads.                                                                                           |
-| `attachDelay`  | `2000`          | Delay (in ms) after detecting the process before attaching debugger. Increase to 5000-10000 if your process requires authentication (TouchID/password) or takes time to initialize. |
+| Setting        | Default         | Description                                                      |
+| -------------- | --------------- | ---------------------------------------------------------------- |
+| `processName`  | `(folder name)` | Binary name to attach to (and `PROC_NAME`).                      |
+| `startCommand` | `make run`      | Command that starts the watcher (e.g. `air`, `go run main.go`).  |
+| `pollMs`       | `500`           | Polling interval (ms) for process detection.                     |
+| `startAir`     | `true`          | Whether to start Air in an integrated terminal with `PROC_NAME`. |
+| `autoUpdate`   | `true`          | Check for updates on startup and every 24 hours.                 |
 
 ## Development
 
-If you want to build and install Ignite locally:
-
-### 1. Build and Install
-
-Use the included `Makefile` to handle the full lifecycle:
+Build and install locally:
 
 ```bash
-make
+make dev
 ```
 
-This will:
+This runs `npm install`, `npm run compile`, `npx vsce package`, and installs the extension into VS Code.
 
-1. Install dependencies (`npm install`)
-2. Compile TypeScript (`npm run compile`)
-3. Package the extension (`vsce package`)
-4. Install it into your VS Code (`code --install-extension ...`)
-
-### 2. Manual Steps
+Manual steps:
 
 - **Compile:** `npm run compile`
-- **Watch Mode:** `npm run watch`
+- **Watch:** `npm run watch`
 - **Package:** `npx vsce package`
+- **Install:** `make install` (uses `ignite-1.1.0.vsix` by default; adjust `VSIX` in the Makefile if needed)

@@ -42,12 +42,20 @@ const auto_attach_1 = require("./auto_attach");
 const ui_2 = require("./ui");
 const config_1 = require("./config");
 const state_1 = require("./state");
+const updater_1 = require("./services/updater");
 function activate(context) {
     state_1.GlobalState.setContext(context);
-    context.subscriptions.push(vscode.commands.registerCommand(config_1.COMMANDS.START, () => (0, auto_attach_1.startAutoAttach)()), vscode.commands.registerCommand(config_1.COMMANDS.OPEN, () => (0, ui_2.openMiniUI)()), vscode.commands.registerCommand(config_1.COMMANDS.STOP, () => (0, session_1.stopAll)()));
+    context.subscriptions.push(vscode.commands.registerCommand(config_1.COMMANDS.START, () => (0, auto_attach_1.startAutoAttach)()), vscode.commands.registerCommand(config_1.COMMANDS.OPEN, () => (0, ui_2.openMiniUI)()), vscode.commands.registerCommand(config_1.COMMANDS.STOP, () => (0, session_1.stopAll)()), vscode.commands.registerCommand(config_1.COMMANDS.CHECK_UPDATE, () => updater_1.Updater.checkForUpdates(true)));
     const config = (0, config_1.getConfiguration)();
     const currentName = config.processName;
     (0, ui_1.setStatus)(`$(play) Ignite: ${currentName}`, config_1.COMMANDS.OPEN, "Click to start or configure");
+    const updateConfig = vscode.workspace.getConfiguration("autoAttachUI");
+    if (updateConfig.get("autoUpdate", true)) {
+        updater_1.Updater.startAutoCheck();
+        context.subscriptions.push({
+            dispose: () => updater_1.Updater.stopAutoCheck(),
+        });
+    }
 }
 function deactivate() {
     (0, session_1.deactivate)();

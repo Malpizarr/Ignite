@@ -5,6 +5,7 @@ export const COMMANDS = {
   START: "autoAttachUI.start",
   OPEN: "autoAttachUI.open",
   STOP: "autoAttachUI.stop",
+  CHECK_UPDATE: "autoAttachUI.checkUpdate",
 };
 
 export const CONFIG_SECTION = "autoAttachUI";
@@ -19,6 +20,8 @@ export const CONFIG_KEYS = {
 export const DEFAULTS = {
   PROCESS_NAME: "ignite",
 };
+
+export const UPDATES_GITHUB_REPO = "Malpizarr/Ignite";
 
 export function getConfiguration() {
   const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION);

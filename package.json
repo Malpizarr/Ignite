@@ -2,7 +2,7 @@
   "name": "ignite",
   "displayName": "Ignite",
   "description": "Auto-attach debugger with Air hot-reload.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Debuggers", "Other"],
@@ -14,7 +14,8 @@
     "commands": [
       { "command": "autoAttachUI.start", "title": "Ignite: Start Auto-Attach" },
       { "command": "autoAttachUI.open", "title": "Ignite: Process (Start/Stop)" },
-      { "command": "autoAttachUI.stop", "title": "Ignite: Stop Auto-Attach" }
+      { "command": "autoAttachUI.stop", "title": "Ignite: Stop Auto-Attach" },
+      { "command": "autoAttachUI.checkUpdate", "title": "Ignite: Check for updates" }
     ],
     "configuration": {
       "title": "Ignite",
@@ -38,6 +39,11 @@
           "type": "string",
           "default": "make run",
           "description": "Command used to start the process (watcher/build)."
+        },
+        "autoAttachUI.autoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for updates automatically every 24 hours."
         }
       }
     }

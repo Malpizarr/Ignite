@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULTS = exports.CONFIG_KEYS = exports.CONFIG_SECTION = exports.COMMANDS = void 0;
+exports.UPDATES_GITHUB_REPO = exports.DEFAULTS = exports.CONFIG_KEYS = exports.CONFIG_SECTION = exports.COMMANDS = void 0;
 exports.getConfiguration = getConfiguration;
 exports.updateConfiguration = updateConfiguration;
 const vscode = __importStar(require("vscode"));
@@ -42,6 +42,7 @@ exports.COMMANDS = {
     START: "autoAttachUI.start",
     OPEN: "autoAttachUI.open",
     STOP: "autoAttachUI.stop",
+    CHECK_UPDATE: "autoAttachUI.checkUpdate",
 };
 exports.CONFIG_SECTION = "autoAttachUI";
 exports.CONFIG_KEYS = {
@@ -53,6 +54,7 @@ exports.CONFIG_KEYS = {
 exports.DEFAULTS = {
     PROCESS_NAME: "ignite",
 };
+exports.UPDATES_GITHUB_REPO = "Malpizarr/Ignite";
 function getConfiguration() {
     const cfg = vscode.workspace.getConfiguration(exports.CONFIG_SECTION);
     const state = state_1.GlobalState.getContext()?.workspaceState;
