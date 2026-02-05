@@ -66,6 +66,7 @@ async function startAutoAttach() {
     const endedSessions = new Set();
     const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
     let lastPid = 0;
+    let afterReload = false;
     try {
         while (state_1.GlobalState.isRunning()) {
             const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs);
@@ -77,6 +78,10 @@ async function startAutoAttach() {
             }
             if (!state_1.GlobalState.isRunning())
                 continue;
+            if (afterReload) {
+                await (0, common_1.sleep)(500);
+                afterReload = false;
+            }
             endedSessions.clear();
             (0, ui_1.setStatus)(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, config_1.COMMANDS.OPEN);
             const wsFolder = vscode.workspace.workspaceFolders?.[0];
@@ -108,6 +113,7 @@ async function startAutoAttach() {
             }
             if (!state_1.GlobalState.isRunning())
                 break;
+            afterReload = true;
             (0, ui_1.setStatus)(`$(debug-disconnect) Ignite: reload detected, retrying...`, config_1.COMMANDS.OPEN);
             await (0, common_1.sleep)(300);
         }

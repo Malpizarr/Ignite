@@ -38,6 +38,7 @@ async function startAutoAttach() {
   const endedSessions = new Set<string>();
   const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
   let lastPid = 0;
+  let afterReload = false;
 
   try {
     while (GlobalState.isRunning()) {
@@ -50,6 +51,11 @@ async function startAutoAttach() {
       }
 
       if (!GlobalState.isRunning()) continue;
+
+      if (afterReload) {
+        await sleep(500);
+        afterReload = false;
+      }
 
       endedSessions.clear();
       setStatus(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, COMMANDS.OPEN);
@@ -86,6 +92,7 @@ async function startAutoAttach() {
       }
 
       if (!GlobalState.isRunning()) break;
+      afterReload = true;
       setStatus(`$(debug-disconnect) Ignite: reload detected, retrying...`, COMMANDS.OPEN);
       await sleep(300);
     }
