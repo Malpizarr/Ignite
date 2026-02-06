@@ -59,6 +59,13 @@ Click the status bar item **Ignite: &lt;process-name&gt;** to open the **Control
 
 When a new version is available, a notification appears with **Update** / **Later**. Choosing **Update** downloads and installs the new `.vsix`, then you can **Reload** the window.
 
+### How the updater works
+
+- Checks GitHub Releases for the latest tag and `.vsix` asset.
+- Downloads the `.vsix` to a temp folder and installs it using the VS Code CLI.
+- Uses the running extension ID (publisher + name) so uninstall/install targets the right extension.
+- Falls back to manual install if the VS Code CLI is not available in your PATH.
+
 Updates are checked automatically a few seconds after startup and then every 24 hours (can be turned off in settings).
 
 ## Configuration
