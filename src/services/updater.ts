@@ -3,10 +3,12 @@ import * as https from "https";
 import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
-import { exec, execFile } from "child_process";
+import * as os from "os";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { URL } from "url";
 import { UPDATES_GITHUB_REPO } from "../config";
+import { GlobalState } from "../state";
 
 const mkdir = promisify(fs.mkdir);
 
@@ -101,8 +103,14 @@ export class Updater {
   }
 
   private static async getCurrentVersion(): Promise<string> {
-    const extension = vscode.extensions.getExtension("local.ignite");
+    const extId = this.getExtensionId();
+    const extension = extId ? vscode.extensions.getExtension(extId) : undefined;
     return extension?.packageJSON.version || "0.0.0";
+  }
+
+  private static getExtensionId(): string | undefined {
+    const ctx = GlobalState.getContext();
+    return ctx?.extension?.id ?? "local.ignite";
   }
 
   private static async fetchFromGitHub(repo: string): Promise<UpdateInfo | null> {
@@ -222,7 +230,7 @@ export class Updater {
     await vscode.window.withProgress(progressOptions, async (progress) => {
       progress.report({ increment: 0, message: "Downloading update..." });
 
-      const tempDir = path.join(vscode.env.appRoot, "..", "extensions", ".ignite-updates");
+      const tempDir = path.join(os.tmpdir(), "ignite-updates");
       await mkdir(tempDir, { recursive: true });
 
       const vsixPath = path.join(tempDir, `ignite-${updateInfo.version}.vsix`);
@@ -237,17 +245,21 @@ export class Updater {
       progress.report({ increment: 80, message: "Installing extension..." });
 
       const codeCommand = process.platform === "win32" ? "code.cmd" : "code";
-      const execAsync = promisify(exec);
+      const appCodePath = path.join(vscode.env.appRoot, "bin", codeCommand);
+      const resolvedCodeCommand = fs.existsSync(appCodePath) ? appCodePath : codeCommand;
       const execFileAsync = promisify(execFile);
 
       try {
-        try {
-          await execFileAsync(codeCommand, ["--uninstall-extension", "local.ignite"]);
-        } catch {
-          // ignore uninstall errors
+        const extId = this.getExtensionId();
+        if (extId) {
+          try {
+            await execFileAsync(resolvedCodeCommand, ["--uninstall-extension", extId]);
+          } catch {
+            // ignore uninstall errors
+          }
         }
 
-        await execFileAsync(codeCommand, ["--install-extension", vsixPath, "--force"]);
+        await execFileAsync(resolvedCodeCommand, ["--install-extension", vsixPath, "--force"]);
         progress.report({ increment: 100, message: "Update complete!" });
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);

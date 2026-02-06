@@ -39,10 +39,12 @@ const https = __importStar(require("https"));
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const os = __importStar(require("os"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const url_1 = require("url");
 const config_1 = require("../config");
+const state_1 = require("../state");
 const mkdir = (0, util_1.promisify)(fs.mkdir);
 const REDIRECT_CODES = [301, 302, 303, 307, 308];
 const MAX_REDIRECTS = 5;
@@ -113,8 +115,13 @@ class Updater {
         }
     }
     static async getCurrentVersion() {
-        const extension = vscode.extensions.getExtension("local.ignite");
+        const extId = this.getExtensionId();
+        const extension = extId ? vscode.extensions.getExtension(extId) : undefined;
         return extension?.packageJSON.version || "0.0.0";
+    }
+    static getExtensionId() {
+        const ctx = state_1.GlobalState.getContext();
+        return ctx?.extension?.id ?? "local.ignite";
     }
     static async fetchFromGitHub(repo) {
         const [repoPath, assetName] = repo.split(":");
@@ -212,7 +219,7 @@ class Updater {
         };
         await vscode.window.withProgress(progressOptions, async (progress) => {
             progress.report({ increment: 0, message: "Downloading update..." });
-            const tempDir = path.join(vscode.env.appRoot, "..", "extensions", ".ignite-updates");
+            const tempDir = path.join(os.tmpdir(), "ignite-updates");
             await mkdir(tempDir, { recursive: true });
             const vsixPath = path.join(tempDir, `ignite-${updateInfo.version}.vsix`);
             await this.downloadFile(updateInfo.downloadUrl, vsixPath, (percent) => {
@@ -223,16 +230,20 @@ class Updater {
             });
             progress.report({ increment: 80, message: "Installing extension..." });
             const codeCommand = process.platform === "win32" ? "code.cmd" : "code";
-            const execAsync = (0, util_1.promisify)(child_process_1.exec);
+            const appCodePath = path.join(vscode.env.appRoot, "bin", codeCommand);
+            const resolvedCodeCommand = fs.existsSync(appCodePath) ? appCodePath : codeCommand;
             const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
             try {
-                try {
-                    await execFileAsync(codeCommand, ["--uninstall-extension", "local.ignite"]);
+                const extId = this.getExtensionId();
+                if (extId) {
+                    try {
+                        await execFileAsync(resolvedCodeCommand, ["--uninstall-extension", extId]);
+                    }
+                    catch {
+                        // ignore uninstall errors
+                    }
                 }
-                catch {
-                    // ignore uninstall errors
-                }
-                await execFileAsync(codeCommand, ["--install-extension", vsixPath, "--force"]);
+                await execFileAsync(resolvedCodeCommand, ["--install-extension", vsixPath, "--force"]);
                 progress.report({ increment: 100, message: "Update complete!" });
             }
             catch (error) {
