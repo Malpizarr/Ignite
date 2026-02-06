@@ -115,7 +115,8 @@ async function startAutoAttach() {
                     processId: pid,
                     cwd: wsFolder.uri.fsPath,
                     showLog: true,
-                    showUser: false
+                    showUser: false,
+                    debugAdapter: "legacy"
                 });
             }
             catch (error) {

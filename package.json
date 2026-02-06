@@ -2,7 +2,7 @@
   "name": "ignite",
   "displayName": "Ignite",
   "description": "Auto-attach debugger with Air hot-reload.",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "publisher": "local",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Debuggers", "Other"],

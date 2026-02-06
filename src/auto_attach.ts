@@ -93,7 +93,8 @@ async function startAutoAttach() {
           processId: pid,
           cwd: wsFolder.uri.fsPath,
           showLog: true,
-          showUser: false
+          showUser: false,
+          debugAdapter: "legacy"
         } as vscode.DebugConfiguration);
       } catch (error: unknown) {
         ok = false;
