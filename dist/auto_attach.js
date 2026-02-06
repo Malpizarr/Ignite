@@ -113,10 +113,9 @@ async function startAutoAttach() {
                     request: "attach",
                     mode: "local",
                     processId: pid,
-                    program: wsFolder.uri.fsPath,
+                    cwd: wsFolder.uri.fsPath,
                     showLog: true,
-                    showUser: false,
-                    debugAdapter: "legacy"
+                    showUser: false
                 });
             }
             catch (error) {
