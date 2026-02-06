@@ -10,6 +10,7 @@ It detects your running application process—even after reloads—and attaches 
 - **Auto-attach:** Finds your Go process (e.g. `api`, `worker`) and attaches the VS Code debugger.
 - **Hot-reload friendly:** Works with Air; when the app restarts (new PID), Ignite re-attaches automatically.
 - **Smart detection:** Targets your binary, not the `air` watcher.
+- **No intrusive pop-ups:** Suppresses attach pop-ups and keeps focus on the terminal while running.
 - **Low config:** Infers process name from the workspace folder.
 - **Built-in updates:** Checks [GitHub Releases](https://github.com/Malpizarr/Ignite/releases) for new versions and can update from the Control Panel (public repo only).
 
@@ -23,9 +24,10 @@ It detects your running application process—even after reloads—and attaches 
    make install
    ```
    Or manually:
-   ```bash
-   code --install-extension ignite-1.1.1.vsix --force
-   ```
+
+```bash
+code --install-extension ignite-1.2.1.vsix --force
+```
 
 No extra setup is needed for update checks; the extension uses the official GitHub repo.
 
@@ -46,7 +48,7 @@ Command palette (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> / <kbd>Ctrl</kbd>+
 
 ### Control Panel
 
-Click the status bar item **Ignite: &lt;process-name&gt;** to open the **Control Panel** (title shows current version, e.g. _Ignite: Control Panel (v1.1.0)_):
+Click the status bar item **Ignite: &lt;process-name&gt;** to open the **Control Panel** (title shows current version, e.g. _Ignite: Control Panel (v1.2.1)_):
 
 1. **Start / Stop** — Toggle the auto-attach loop.
 2. **Change process** — Override the binary name (e.g. `api`, `worker`).
@@ -95,4 +97,4 @@ Manual steps:
 - **Compile:** `npm run compile`
 - **Watch:** `npm run watch`
 - **Package:** `npx vsce package`
-- **Install:** `make install` (uses `ignite-1.1.1.vsix` by default; adjust `VSIX` in the Makefile if needed)
+- **Install:** `make install` (uses `ignite-1.2.1.vsix` by default; adjust `VSIX` in the Makefile if needed)
