@@ -42,6 +42,7 @@ const common_1 = require("./utils/common");
 const regex_1 = require("./utils/regex");
 const state_1 = require("./state");
 const config_1 = require("./config");
+const goDebugAdapterPatch_1 = require("./services/goDebugAdapterPatch");
 async function startAutoAttach() {
     if (state_1.GlobalState.isRunning()) {
         vscode.window.showInformationMessage("Already running.");
@@ -51,18 +52,21 @@ async function startAutoAttach() {
     const procName = config.processName;
     const pollMs = config.pollMs;
     const airCommand = config.airCommand;
+    (0, goDebugAdapterPatch_1.patch)();
     const pattern = (0, regex_1.buildProcessPattern)(procName);
     const existingPid = await (0, process_1.pgrepNewestPid)(pattern);
     const processExists = existingPid && !(await (0, process_1.isAirOrBuildProcess)(existingPid));
     const shouldStart = !processExists;
     if (shouldStart) {
         (0, terminal_1.ensureAirStarted)(procName, airCommand);
+        await (0, terminal_1.focusAirTerminal)();
     }
     state_1.GlobalState.setRunning(true);
     const statusMsg = shouldStart
         ? `$(loading~spin) Ignite: starting "${procName}"...`
         : `$(debug-disconnect) Ignite: attaching to "${procName}"...`;
     (0, ui_1.setStatus)(statusMsg, config_1.COMMANDS.OPEN, "Waiting for process... Click for options");
+    await (0, terminal_1.focusAirTerminal)();
     const endedSessions = new Set();
     const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
     let lastPid = 0;
@@ -94,6 +98,13 @@ async function startAutoAttach() {
             endedSessions.clear();
             (0, ui_1.setStatus)(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, config_1.COMMANDS.OPEN);
             const wsFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!wsFolder) {
+                (0, ui_1.setStatus)(`$(error) Ignite: no workspace folder found.`, config_1.COMMANDS.OPEN);
+                vscode.window.showInformationMessage("Open a workspace folder before attaching.");
+                await (0, terminal_1.focusAirTerminal)();
+                await (0, common_1.sleep)(2000);
+                continue;
+            }
             let ok = false;
             try {
                 ok = await vscode.debug.startDebugging(wsFolder, {
@@ -102,9 +113,10 @@ async function startAutoAttach() {
                     request: "attach",
                     mode: "local",
                     processId: pid,
-                    program: wsFolder?.uri.fsPath ?? "${workspaceFolder}",
+                    program: wsFolder.uri.fsPath,
                     showLog: true,
-                    showUser: false
+                    showUser: false,
+                    debugAdapter: "legacy"
                 });
             }
             catch (error) {
@@ -112,19 +124,28 @@ async function startAutoAttach() {
             }
             if (!ok) {
                 (0, ui_1.setStatus)(`$(error) Ignite: please check terminal, error starting "${procName}".`, config_1.COMMANDS.OPEN, `Attach failed (PID ${pid}). Check terminal for panic or process errors.`);
-                await (0, common_1.sleep)(500);
+                await (0, terminal_1.focusAirTerminal)();
+                await (0, common_1.sleep)(2000);
                 continue;
             }
             lastPid = pid;
+            const attachedAt = Date.now();
             (0, ui_1.setStatus)(`$(debug-alt) Ignite: attached (${procName}).`, config_1.COMMANDS.OPEN, "Attached. Click for options");
+            await (0, terminal_1.focusAirTerminal)();
             while (state_1.GlobalState.isRunning() && endedSessions.size === 0) {
                 await (0, common_1.sleep)(200);
             }
             if (!state_1.GlobalState.isRunning())
                 break;
             afterReload = true;
+            const attachedDurationMs = Date.now() - attachedAt;
+            const minAttachedMs = 5000;
+            if (attachedDurationMs < minAttachedMs) {
+                (0, ui_1.setStatus)(`$(debug-disconnect) Ignite: session ended, waiting before retry…`, config_1.COMMANDS.OPEN);
+                await (0, common_1.sleep)(4000);
+            }
             (0, ui_1.setStatus)(`$(debug-disconnect) Ignite: reload detected, retrying...`, config_1.COMMANDS.OPEN);
-            await (0, common_1.sleep)(300);
+            await (0, common_1.sleep)(500);
         }
     }
     finally {

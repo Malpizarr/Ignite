@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { GlobalState } from "./state";
+import { restore as restoreGoDebugAdapter } from "./services/goDebugAdapterPatch";
 
 export async function stopAll() {
   GlobalState.setRunning(false);
@@ -13,6 +14,8 @@ export async function stopAll() {
       await vscode.debug.stopDebugging(session);
     }
   }
+
+  restoreGoDebugAdapter();
 
   vscode.window.showInformationMessage("Ignite stopped.");
 }

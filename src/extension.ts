@@ -6,6 +6,7 @@ import { openMiniUI } from "./ui";
 import { getConfiguration, COMMANDS } from "./config";
 import { GlobalState } from "./state";
 import { Updater } from "./services/updater";
+import { restore as restoreGoDebugAdapter } from "./services/goDebugAdapterPatch";
 
 export function activate(context: vscode.ExtensionContext) {
   GlobalState.setContext(context);
@@ -30,5 +31,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  restoreGoDebugAdapter();
   deactivateHelper();
 }

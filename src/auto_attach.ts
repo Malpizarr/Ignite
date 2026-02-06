@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
 import { isProcessRunning, waitForStableProcess, pgrepNewestPid, isAirOrBuildProcess } from "./services/process";
-import { ensureAirStarted } from "./services/terminal";
+import { ensureAirStarted, focusAirTerminal } from "./services/terminal";
 import { setStatus } from "./services/ui";
 import { sleep } from "./utils/common";
 import { buildProcessPattern } from "./utils/regex";
 import { GlobalState } from "./state";
 import { getConfiguration, COMMANDS } from "./config";
+import { patch as patchGoDebugAdapter } from "./services/goDebugAdapterPatch";
 
 async function startAutoAttach() {
   if (GlobalState.isRunning()) {
@@ -18,6 +19,8 @@ async function startAutoAttach() {
   const pollMs = config.pollMs;
   const airCommand = config.airCommand;
 
+  patchGoDebugAdapter();
+
   const pattern = buildProcessPattern(procName);
 
   const existingPid = await pgrepNewestPid(pattern);
@@ -27,6 +30,7 @@ async function startAutoAttach() {
 
   if (shouldStart) {
     ensureAirStarted(procName, airCommand);
+    await focusAirTerminal();
   }
 
   GlobalState.setRunning(true);
@@ -34,6 +38,7 @@ async function startAutoAttach() {
     ? `$(loading~spin) Ignite: starting "${procName}"...`
     : `$(debug-disconnect) Ignite: attaching to "${procName}"...`;
   setStatus(statusMsg, COMMANDS.OPEN, "Waiting for process... Click for options");
+  await focusAirTerminal();
 
   const endedSessions = new Set<string>();
   const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
@@ -70,6 +75,13 @@ async function startAutoAttach() {
       setStatus(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, COMMANDS.OPEN);
 
       const wsFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!wsFolder) {
+        setStatus(`$(error) Ignite: no workspace folder found.`, COMMANDS.OPEN);
+        vscode.window.showInformationMessage("Open a workspace folder before attaching.");
+        await focusAirTerminal();
+        await sleep(2000);
+        continue;
+      }
 
       let ok = false;
       try {
@@ -79,9 +91,10 @@ async function startAutoAttach() {
           request: "attach",
           mode: "local",
           processId: pid,
-          program: wsFolder?.uri.fsPath ?? "${workspaceFolder}",
+          program: wsFolder.uri.fsPath,
           showLog: true,
-          showUser: false
+          showUser: false,
+          debugAdapter: "legacy"
         } as vscode.DebugConfiguration);
       } catch (error: unknown) {
         ok = false;
@@ -93,12 +106,15 @@ async function startAutoAttach() {
           COMMANDS.OPEN,
           `Attach failed (PID ${pid}). Check terminal for panic or process errors.`
         );
-        await sleep(500);
+        await focusAirTerminal();
+        await sleep(2000);
         continue;
       }
 
       lastPid = pid;
+      const attachedAt = Date.now();
       setStatus(`$(debug-alt) Ignite: attached (${procName}).`, COMMANDS.OPEN, "Attached. Click for options");
+      await focusAirTerminal();
 
       while (GlobalState.isRunning() && endedSessions.size === 0) {
         await sleep(200);
@@ -106,8 +122,14 @@ async function startAutoAttach() {
 
       if (!GlobalState.isRunning()) break;
       afterReload = true;
+      const attachedDurationMs = Date.now() - attachedAt;
+      const minAttachedMs = 5000;
+      if (attachedDurationMs < minAttachedMs) {
+        setStatus(`$(debug-disconnect) Ignite: session ended, waiting before retry…`, COMMANDS.OPEN);
+        await sleep(4000);
+      }
       setStatus(`$(debug-disconnect) Ignite: reload detected, retrying...`, COMMANDS.OPEN);
-      await sleep(300);
+      await sleep(500);
     }
   } finally {
     termDisp.dispose();

@@ -56,3 +56,24 @@ export function ensureAirStarted(procName: string, airCommand: string) {
   t.show(true);
   t.sendText(airCommand, true);
 }
+
+export async function focusAirTerminal(): Promise<void> {
+  const storedTerminal = GlobalState.getAirTerminal();
+  if (storedTerminal && isTerminalActive(storedTerminal)) {
+    storedTerminal.show(false);
+    return;
+  }
+
+  const activeTerminal = vscode.window.activeTerminal;
+  if (activeTerminal) {
+    activeTerminal.show(false);
+    return;
+  }
+
+  if (vscode.window.terminals.length > 0) {
+    vscode.window.terminals[0].show(false);
+    return;
+  }
+
+  await vscode.commands.executeCommand("workbench.action.terminal.focus");
+}

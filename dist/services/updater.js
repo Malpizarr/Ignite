@@ -224,9 +224,15 @@ class Updater {
             progress.report({ increment: 80, message: "Installing extension..." });
             const codeCommand = process.platform === "win32" ? "code.cmd" : "code";
             const execAsync = (0, util_1.promisify)(child_process_1.exec);
+            const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
             try {
-                await execAsync(`${codeCommand} --uninstall-extension local.ignite || true`);
-                await execAsync(`${codeCommand} --install-extension "${vsixPath}" --force`);
+                try {
+                    await execFileAsync(codeCommand, ["--uninstall-extension", "local.ignite"]);
+                }
+                catch {
+                    // ignore uninstall errors
+                }
+                await execFileAsync(codeCommand, ["--install-extension", vsixPath, "--force"]);
                 progress.report({ increment: 100, message: "Update complete!" });
             }
             catch (error) {

@@ -33,27 +33,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopAll = stopAll;
-exports.deactivate = deactivate;
+exports.log = log;
+exports.showLogs = showLogs;
 const vscode = __importStar(require("vscode"));
-const state_1 = require("./state");
-const goDebugAdapterPatch_1 = require("./services/goDebugAdapterPatch");
-async function stopAll() {
-    state_1.GlobalState.setRunning(false);
-    const activeSessions = vscode.debug.activeDebugSession
-        ? [vscode.debug.activeDebugSession]
-        : [];
-    for (const session of activeSessions) {
-        if (session.name.startsWith("Ignite")) {
-            await vscode.debug.stopDebugging(session);
-        }
+let channel;
+function getChannel() {
+    if (!channel) {
+        channel = vscode.window.createOutputChannel("Ignite");
     }
-    (0, goDebugAdapterPatch_1.restore)();
-    vscode.window.showInformationMessage("Ignite stopped.");
+    return channel;
 }
-function deactivate() {
-    state_1.GlobalState.setRunning(false);
-    state_1.GlobalState.getAirTerminal()?.dispose();
-    state_1.GlobalState.getStatusItem()?.dispose();
-    state_1.GlobalState.disposeAll();
+function log(message) {
+    getChannel().appendLine(message);
+}
+function showLogs(preserveFocus = true) {
+    getChannel().show(preserveFocus);
 }

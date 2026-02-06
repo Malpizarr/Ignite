@@ -43,6 +43,7 @@ const ui_2 = require("./ui");
 const config_1 = require("./config");
 const state_1 = require("./state");
 const updater_1 = require("./services/updater");
+const goDebugAdapterPatch_1 = require("./services/goDebugAdapterPatch");
 function activate(context) {
     state_1.GlobalState.setContext(context);
     context.subscriptions.push(vscode.commands.registerCommand(config_1.COMMANDS.START, () => (0, auto_attach_1.startAutoAttach)()), vscode.commands.registerCommand(config_1.COMMANDS.OPEN, () => (0, ui_2.openMiniUI)()), vscode.commands.registerCommand(config_1.COMMANDS.STOP, () => (0, session_1.stopAll)()), vscode.commands.registerCommand(config_1.COMMANDS.CHECK_UPDATE, () => updater_1.Updater.checkForUpdates(true)));
@@ -58,5 +59,6 @@ function activate(context) {
     }
 }
 function deactivate() {
+    (0, goDebugAdapterPatch_1.restore)();
     (0, session_1.deactivate)();
 }

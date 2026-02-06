@@ -3,7 +3,7 @@ import * as https from "https";
 import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import { URL } from "url";
 import { UPDATES_GITHUB_REPO } from "../config";
@@ -238,10 +238,16 @@ export class Updater {
 
       const codeCommand = process.platform === "win32" ? "code.cmd" : "code";
       const execAsync = promisify(exec);
+      const execFileAsync = promisify(execFile);
 
       try {
-        await execAsync(`${codeCommand} --uninstall-extension local.ignite || true`);
-        await execAsync(`${codeCommand} --install-extension "${vsixPath}" --force`);
+        try {
+          await execFileAsync(codeCommand, ["--uninstall-extension", "local.ignite"]);
+        } catch {
+          // ignore uninstall errors
+        }
+
+        await execFileAsync(codeCommand, ["--install-extension", vsixPath, "--force"]);
         progress.report({ increment: 100, message: "Update complete!" });
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);

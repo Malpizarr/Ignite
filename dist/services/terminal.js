@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAirStarted = ensureAirStarted;
+exports.focusAirTerminal = focusAirTerminal;
 const vscode = __importStar(require("vscode"));
 const state_1 = require("../state");
 function isTerminalActive(terminal) {
@@ -82,4 +83,21 @@ function ensureAirStarted(procName, airCommand) {
     state_1.GlobalState.setAirTerminal(t);
     t.show(true);
     t.sendText(airCommand, true);
+}
+async function focusAirTerminal() {
+    const storedTerminal = state_1.GlobalState.getAirTerminal();
+    if (storedTerminal && isTerminalActive(storedTerminal)) {
+        storedTerminal.show(false);
+        return;
+    }
+    const activeTerminal = vscode.window.activeTerminal;
+    if (activeTerminal) {
+        activeTerminal.show(false);
+        return;
+    }
+    if (vscode.window.terminals.length > 0) {
+        vscode.window.terminals[0].show(false);
+        return;
+    }
+    await vscode.commands.executeCommand("workbench.action.terminal.focus");
 }
