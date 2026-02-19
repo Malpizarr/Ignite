@@ -105,3 +105,5 @@ Manual steps:
 - **Watch:** `npm run watch`
 - **Package:** `npx vsce package`
 - **Install:** `make install` (uses `ignite-1.2.1.vsix` by default; adjust `VSIX` in the Makefile if needed)
+
+- **test**
