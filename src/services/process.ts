@@ -65,7 +65,47 @@ export async function isAirOrBuildProcess(pid: number): Promise<boolean> {
   return /(^|\/|\\)\.?air(\.exe)?($|\s)/.test(cmd) || /(^|\/|\\)go(\.exe)?\s+build/.test(cmd);
 }
 
-export async function waitForStableProcess(pattern: string, pollMs: number, stabilityChecks: number = 3): Promise<number | null> {
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractExecutable(command: string): string {
+  const trimmed = command.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
+    const quote = trimmed[0];
+    const end = trimmed.indexOf(quote, 1);
+    if (end > 1) {
+      return trimmed.slice(1, end);
+    }
+  }
+  const firstSpace = trimmed.search(/\s/);
+  return firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
+}
+
+function executableLooksLikeTarget(executable: string, procName: string): boolean {
+  if (!executable || !procName) return false;
+  const exe = executable.trim();
+  const proc = procName.trim();
+  if (!exe || !proc) return false;
+  const procEre = escapeRegex(proc);
+  const direct = new RegExp(`(^|[\\\\/])\\.?${procEre}(\\.exe)?$`, "i");
+  const tmp = new RegExp(`(^|[\\\\/])tmp[\\\\/]+${procEre}(\\.exe)?$`, "i");
+  return direct.test(exe) || tmp.test(exe);
+}
+
+export async function matchesTargetProcess(pid: number, procName: string): Promise<boolean> {
+  const cmd = await getProcessCommand(pid);
+  const executable = extractExecutable(cmd);
+  return executableLooksLikeTarget(executable, procName);
+}
+
+export async function waitForStableProcess(
+  pattern: string,
+  pollMs: number,
+  stabilityChecks: number = 3,
+  procName?: string
+): Promise<number | null> {
   let candidatePid: number | null = null;
   let stableCount = 0;
 
@@ -80,6 +120,13 @@ export async function waitForStableProcess(pattern: string, pollMs: number, stab
     }
 
     if (await isAirOrBuildProcess(pid)) {
+      candidatePid = null;
+      stableCount = 0;
+      await sleep(pollMs);
+      continue;
+    }
+
+    if (procName && !(await matchesTargetProcess(pid, procName))) {
       candidatePid = null;
       stableCount = 0;
       await sleep(pollMs);

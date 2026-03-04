@@ -5,6 +5,7 @@ exports.getProcessCommand = getProcessCommand;
 exports.pgrepNewestPid = pgrepNewestPid;
 exports.waitForPid = waitForPid;
 exports.isAirOrBuildProcess = isAirOrBuildProcess;
+exports.matchesTargetProcess = matchesTargetProcess;
 exports.waitForStableProcess = waitForStableProcess;
 const child_process_1 = require("child_process");
 const state_1 = require("../state");
@@ -65,7 +66,41 @@ async function isAirOrBuildProcess(pid) {
     const cmd = await getProcessCommand(pid);
     return /(^|\/|\\)\.?air(\.exe)?($|\s)/.test(cmd) || /(^|\/|\\)go(\.exe)?\s+build/.test(cmd);
 }
-async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3) {
+function escapeRegex(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function extractExecutable(command) {
+    const trimmed = command.trim();
+    if (!trimmed)
+        return "";
+    if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
+        const quote = trimmed[0];
+        const end = trimmed.indexOf(quote, 1);
+        if (end > 1) {
+            return trimmed.slice(1, end);
+        }
+    }
+    const firstSpace = trimmed.search(/\s/);
+    return firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
+}
+function executableLooksLikeTarget(executable, procName) {
+    if (!executable || !procName)
+        return false;
+    const exe = executable.trim();
+    const proc = procName.trim();
+    if (!exe || !proc)
+        return false;
+    const procEre = escapeRegex(proc);
+    const direct = new RegExp(`(^|[\\\\/])\\.?${procEre}(\\.exe)?$`, "i");
+    const tmp = new RegExp(`(^|[\\\\/])tmp[\\\\/]+${procEre}(\\.exe)?$`, "i");
+    return direct.test(exe) || tmp.test(exe);
+}
+async function matchesTargetProcess(pid, procName) {
+    const cmd = await getProcessCommand(pid);
+    const executable = extractExecutable(cmd);
+    return executableLooksLikeTarget(executable, procName);
+}
+async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3, procName) {
     let candidatePid = null;
     let stableCount = 0;
     while (state_1.GlobalState.isRunning()) {
@@ -77,6 +112,12 @@ async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3) {
             continue;
         }
         if (await isAirOrBuildProcess(pid)) {
+            candidatePid = null;
+            stableCount = 0;
+            await (0, common_1.sleep)(pollMs);
+            continue;
+        }
+        if (procName && !(await matchesTargetProcess(pid, procName))) {
             candidatePid = null;
             stableCount = 0;
             await (0, common_1.sleep)(pollMs);

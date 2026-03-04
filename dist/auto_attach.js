@@ -62,7 +62,10 @@ async function startAutoAttach() {
     (0, goDebugAdapterPatch_1.patch)();
     const pattern = (0, regex_1.buildProcessPattern)(procName);
     const existingPid = await (0, process_1.pgrepNewestPid)(pattern);
-    const processExists = existingPid && !(await (0, process_1.isAirOrBuildProcess)(existingPid));
+    const processExists = !!existingPid &&
+        (await (0, process_1.isProcessRunning)(existingPid)) &&
+        !(await (0, process_1.isAirOrBuildProcess)(existingPid)) &&
+        (await (0, process_1.matchesTargetProcess)(existingPid, procName));
     const shouldStart = !processExists;
     if (shouldStart) {
         const started = await (0, terminal_1.ensureAirStarted)(procName, airCommand);
@@ -97,7 +100,7 @@ async function startAutoAttach() {
     let afterReload = false;
     try {
         while (state_1.GlobalState.isRunning()) {
-            const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs);
+            const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs, 3, procName);
             if (!state_1.GlobalState.isRunning() || !pid)
                 break;
             if (pid === lastPid) {
@@ -108,7 +111,10 @@ async function startAutoAttach() {
                 continue;
             if (afterReload) {
                 const existingPidAfterReload = await (0, process_1.pgrepNewestPid)(pattern);
-                const processExistsAfterReload = existingPidAfterReload && !(await (0, process_1.isAirOrBuildProcess)(existingPidAfterReload));
+                const processExistsAfterReload = !!existingPidAfterReload &&
+                    (await (0, process_1.isProcessRunning)(existingPidAfterReload)) &&
+                    !(await (0, process_1.isAirOrBuildProcess)(existingPidAfterReload)) &&
+                    (await (0, process_1.matchesTargetProcess)(existingPidAfterReload, procName));
                 if (!processExistsAfterReload) {
                     (0, ui_1.setStatus)(`$(loading~spin) Ignite: waiting process after reload…`, config_1.COMMANDS.OPEN);
                     await (0, common_1.sleep)(500);

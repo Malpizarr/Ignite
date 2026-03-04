@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { isProcessRunning, waitForStableProcess, pgrepNewestPid, isAirOrBuildProcess } from "./services/process";
+import { isProcessRunning, waitForStableProcess, pgrepNewestPid, isAirOrBuildProcess, matchesTargetProcess } from "./services/process";
 import { ensureAirStarted, focusAirTerminal } from "./services/terminal";
 import { setStatus } from "./services/ui";
 import { sleep } from "./utils/common";
@@ -32,7 +32,11 @@ async function startAutoAttach() {
   const pattern = buildProcessPattern(procName);
 
   const existingPid = await pgrepNewestPid(pattern);
-  const processExists = existingPid && !(await isAirOrBuildProcess(existingPid));
+  const processExists =
+    !!existingPid &&
+    (await isProcessRunning(existingPid)) &&
+    !(await isAirOrBuildProcess(existingPid)) &&
+    (await matchesTargetProcess(existingPid, procName));
 
   const shouldStart = !processExists;
 
@@ -69,7 +73,7 @@ async function startAutoAttach() {
 
   try {
     while (GlobalState.isRunning()) {
-      const pid = await waitForStableProcess(pattern, pollMs);
+      const pid = await waitForStableProcess(pattern, pollMs, 3, procName);
       if (!GlobalState.isRunning() || !pid) break;
 
       if (pid === lastPid) {
@@ -81,7 +85,11 @@ async function startAutoAttach() {
 
       if (afterReload) {
         const existingPidAfterReload = await pgrepNewestPid(pattern);
-        const processExistsAfterReload = existingPidAfterReload && !(await isAirOrBuildProcess(existingPidAfterReload));
+        const processExistsAfterReload =
+          !!existingPidAfterReload &&
+          (await isProcessRunning(existingPidAfterReload)) &&
+          !(await isAirOrBuildProcess(existingPidAfterReload)) &&
+          (await matchesTargetProcess(existingPidAfterReload, procName));
         if (!processExistsAfterReload) {
           setStatus(`$(loading~spin) Ignite: waiting process after reload…`, COMMANDS.OPEN);
           await sleep(500);
