@@ -43,22 +43,33 @@ const regex_1 = require("./utils/regex");
 const state_1 = require("./state");
 const config_1 = require("./config");
 const goDebugAdapterPatch_1 = require("./services/goDebugAdapterPatch");
+const air_1 = require("./services/air");
 async function startAutoAttach() {
     if (state_1.GlobalState.isRunning()) {
         vscode.window.showInformationMessage("Already running.");
+        return;
+    }
+    const airReady = await (0, air_1.ensureAirReady)();
+    if (!airReady) {
+        (0, ui_1.setStatus)("$(error) Ignite: Air is required", config_1.COMMANDS.OPEN, "Install or update Air to start");
         return;
     }
     const config = (0, config_1.getConfiguration)();
     const procName = config.processName;
     const pollMs = config.pollMs;
     const airCommand = config.airCommand;
+    const autoContinueOnSave = config.autoContinueOnSave;
     (0, goDebugAdapterPatch_1.patch)();
     const pattern = (0, regex_1.buildProcessPattern)(procName);
     const existingPid = await (0, process_1.pgrepNewestPid)(pattern);
     const processExists = existingPid && !(await (0, process_1.isAirOrBuildProcess)(existingPid));
     const shouldStart = !processExists;
     if (shouldStart) {
-        (0, terminal_1.ensureAirStarted)(procName, airCommand);
+        const started = await (0, terminal_1.ensureAirStarted)(procName, airCommand);
+        if (!started) {
+            (0, ui_1.setStatus)("$(error) Ignite: invalid start command", config_1.COMMANDS.OPEN, "Update start command and retry");
+            return;
+        }
         await (0, terminal_1.focusAirTerminal)();
     }
     state_1.GlobalState.setRunning(true);
@@ -69,6 +80,19 @@ async function startAutoAttach() {
     await (0, terminal_1.focusAirTerminal)();
     const endedSessions = new Set();
     const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
+    const saveDisp = vscode.workspace.onDidSaveTextDocument(async () => {
+        if (!autoContinueOnSave || !state_1.GlobalState.isRunning())
+            return;
+        const activeSession = vscode.debug.activeDebugSession;
+        if (!activeSession?.name.startsWith("Ignite"))
+            return;
+        try {
+            await vscode.commands.executeCommand("workbench.action.debug.continue");
+        }
+        catch {
+            // ignore command failures for non-paused states/adapters
+        }
+    });
     let lastPid = 0;
     let afterReload = false;
     try {
@@ -86,8 +110,7 @@ async function startAutoAttach() {
                 const existingPidAfterReload = await (0, process_1.pgrepNewestPid)(pattern);
                 const processExistsAfterReload = existingPidAfterReload && !(await (0, process_1.isAirOrBuildProcess)(existingPidAfterReload));
                 if (!processExistsAfterReload) {
-                    (0, ui_1.setStatus)(`$(loading~spin) Ignite: verifying command after reload…`, config_1.COMMANDS.OPEN);
-                    (0, terminal_1.ensureAirStarted)(procName, airCommand);
+                    (0, ui_1.setStatus)(`$(loading~spin) Ignite: waiting process after reload…`, config_1.COMMANDS.OPEN);
                     await (0, common_1.sleep)(500);
                     afterReload = false;
                     continue;
@@ -150,6 +173,7 @@ async function startAutoAttach() {
     }
     finally {
         termDisp.dispose();
+        saveDisp.dispose();
         state_1.GlobalState.setRunning(false);
         const finalConfig = (0, config_1.getConfiguration)();
         (0, ui_1.setStatus)(`$(play) Ignite: ${finalConfig.processName}`, config_1.COMMANDS.OPEN, "Click to start or configure");

@@ -50,6 +50,7 @@ exports.CONFIG_KEYS = {
     POLL_MS: "pollMs",
     START_AIR: "startAir",
     AIR_COMMAND: "startCommand",
+    AUTO_CONTINUE_ON_SAVE: "autoContinueOnSave",
 };
 exports.DEFAULTS = {
     PROCESS_NAME: "ignite",
@@ -74,6 +75,7 @@ function getConfiguration() {
         pollMs,
         startAir: cfg.get(exports.CONFIG_KEYS.START_AIR),
         airCommand,
+        autoContinueOnSave: cfg.get(exports.CONFIG_KEYS.AUTO_CONTINUE_ON_SAVE),
     };
 }
 async function updateConfiguration(key, value, target = vscode.ConfigurationTarget.Workspace) {

@@ -15,6 +15,7 @@ export const CONFIG_KEYS = {
   POLL_MS: "pollMs",
   START_AIR: "startAir",
   AIR_COMMAND: "startCommand",
+  AUTO_CONTINUE_ON_SAVE: "autoContinueOnSave",
 };
 
 export const DEFAULTS = {
@@ -49,6 +50,7 @@ export function getConfiguration() {
     pollMs,
     startAir: cfg.get<boolean>(CONFIG_KEYS.START_AIR)!,
     airCommand,
+    autoContinueOnSave: cfg.get<boolean>(CONFIG_KEYS.AUTO_CONTINUE_ON_SAVE)!,
   };
 }
 

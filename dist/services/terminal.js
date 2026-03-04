@@ -36,7 +36,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAirStarted = ensureAirStarted;
 exports.focusAirTerminal = focusAirTerminal;
 const vscode = __importStar(require("vscode"));
+const fs = __importStar(require("fs"));
+const child_process_1 = require("child_process");
+const util_1 = require("util");
 const state_1 = require("../state");
+const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
+const SHELL_BUILTINS = new Set(["cd", "alias", "export", "unset", "set", "eval", "exec", "source", "."]);
 function isTerminalActive(terminal) {
     return vscode.window.terminals.includes(terminal);
 }
@@ -54,23 +59,66 @@ function setupTerminalTracking(terminal) {
     });
     state_1.GlobalState.addDisposable(terminalDisposable);
 }
-function ensureAirStarted(procName, airCommand) {
+function extractExecutable(command) {
+    const trimmed = command.trim();
+    if (!trimmed)
+        return null;
+    const tokens = trimmed.split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token))
+            continue;
+        return token;
+    }
+    return null;
+}
+async function executableExists(execName) {
+    if (!execName)
+        return false;
+    if (SHELL_BUILTINS.has(execName))
+        return true;
+    if (execName.includes("/")) {
+        return fs.existsSync(execName);
+    }
+    try {
+        await execFileAsync("which", [execName], { timeout: 2000 });
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+async function validateAirCommand(airCommand) {
+    const executable = extractExecutable(airCommand);
+    if (!executable) {
+        vscode.window.showErrorMessage("Ignite start command is empty.");
+        return false;
+    }
+    const exists = await executableExists(executable);
+    if (exists)
+        return true;
+    vscode.window.showErrorMessage(`Ignite could not find executable: ${executable}. Update autoAttachUI.startCommand or your PATH.`);
+    return false;
+}
+function disposeTerminal(terminal) {
+    if (!terminal)
+        return;
+    if (!isTerminalActive(terminal))
+        return;
+    terminal.dispose();
+}
+async function ensureAirStarted(procName, airCommand) {
+    const valid = await validateAirCommand(airCommand);
+    if (!valid) {
+        return false;
+    }
     const storedTerminal = state_1.GlobalState.getAirTerminal();
     if (storedTerminal) {
-        if (isTerminalActive(storedTerminal)) {
-            storedTerminal.show(true);
-            storedTerminal.sendText(airCommand, true);
-            return;
-        }
+        disposeTerminal(storedTerminal);
         state_1.GlobalState.setAirTerminal(undefined);
     }
     const existingTerminal = findExistingAirTerminal(procName);
     if (existingTerminal) {
-        setupTerminalTracking(existingTerminal);
-        state_1.GlobalState.setAirTerminal(existingTerminal);
-        existingTerminal.show(true);
-        existingTerminal.sendText(airCommand, true);
-        return;
+        disposeTerminal(existingTerminal);
     }
     const t = vscode.window.createTerminal({
         name: `air (${procName})`,
@@ -83,6 +131,7 @@ function ensureAirStarted(procName, airCommand) {
     state_1.GlobalState.setAirTerminal(t);
     t.show(true);
     t.sendText(airCommand, true);
+    return true;
 }
 async function focusAirTerminal() {
     const storedTerminal = state_1.GlobalState.getAirTerminal();

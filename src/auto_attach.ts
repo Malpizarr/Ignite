@@ -7,6 +7,7 @@ import { buildProcessPattern } from "./utils/regex";
 import { GlobalState } from "./state";
 import { getConfiguration, COMMANDS } from "./config";
 import { patch as patchGoDebugAdapter } from "./services/goDebugAdapterPatch";
+import { ensureAirReady } from "./services/air";
 
 async function startAutoAttach() {
   if (GlobalState.isRunning()) {
@@ -14,10 +15,17 @@ async function startAutoAttach() {
     return;
   }
 
+  const airReady = await ensureAirReady();
+  if (!airReady) {
+    setStatus("$(error) Ignite: Air is required", COMMANDS.OPEN, "Install or update Air to start");
+    return;
+  }
+
   const config = getConfiguration();
   const procName = config.processName;
   const pollMs = config.pollMs;
   const airCommand = config.airCommand;
+  const autoContinueOnSave = config.autoContinueOnSave;
 
   patchGoDebugAdapter();
 
@@ -29,7 +37,11 @@ async function startAutoAttach() {
   const shouldStart = !processExists;
 
   if (shouldStart) {
-    ensureAirStarted(procName, airCommand);
+    const started = await ensureAirStarted(procName, airCommand);
+    if (!started) {
+      setStatus("$(error) Ignite: invalid start command", COMMANDS.OPEN, "Update start command and retry");
+      return;
+    }
     await focusAirTerminal();
   }
 
@@ -42,6 +54,16 @@ async function startAutoAttach() {
 
   const endedSessions = new Set<string>();
   const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
+  const saveDisp = vscode.workspace.onDidSaveTextDocument(async () => {
+    if (!autoContinueOnSave || !GlobalState.isRunning()) return;
+    const activeSession = vscode.debug.activeDebugSession;
+    if (!activeSession?.name.startsWith("Ignite")) return;
+    try {
+      await vscode.commands.executeCommand("workbench.action.debug.continue");
+    } catch {
+      // ignore command failures for non-paused states/adapters
+    }
+  });
   let lastPid = 0;
   let afterReload = false;
 
@@ -61,8 +83,7 @@ async function startAutoAttach() {
         const existingPidAfterReload = await pgrepNewestPid(pattern);
         const processExistsAfterReload = existingPidAfterReload && !(await isAirOrBuildProcess(existingPidAfterReload));
         if (!processExistsAfterReload) {
-          setStatus(`$(loading~spin) Ignite: verifying command after reload…`, COMMANDS.OPEN);
-          ensureAirStarted(procName, airCommand);
+          setStatus(`$(loading~spin) Ignite: waiting process after reload…`, COMMANDS.OPEN);
           await sleep(500);
           afterReload = false;
           continue;
@@ -133,6 +154,7 @@ async function startAutoAttach() {
     }
   } finally {
     termDisp.dispose();
+    saveDisp.dispose();
     GlobalState.setRunning(false);
     const finalConfig = getConfiguration();
     setStatus(`$(play) Ignite: ${finalConfig.processName}`, COMMANDS.OPEN, "Click to start or configure");

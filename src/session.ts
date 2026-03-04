@@ -17,6 +17,12 @@ export async function stopAll() {
 
   restoreGoDebugAdapter();
 
+  const airTerminal = GlobalState.getAirTerminal();
+  if (airTerminal) {
+    airTerminal.dispose();
+    GlobalState.setAirTerminal(undefined);
+  }
+
   vscode.window.showInformationMessage("Ignite stopped.");
 }
 

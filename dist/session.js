@@ -49,6 +49,11 @@ async function stopAll() {
         }
     }
     (0, goDebugAdapterPatch_1.restore)();
+    const airTerminal = state_1.GlobalState.getAirTerminal();
+    if (airTerminal) {
+        airTerminal.dispose();
+        state_1.GlobalState.setAirTerminal(undefined);
+    }
     vscode.window.showInformationMessage("Ignite stopped.");
 }
 function deactivate() {
