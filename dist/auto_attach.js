@@ -82,7 +82,15 @@ async function startAutoAttach() {
     (0, ui_1.setStatus)(statusMsg, config_1.COMMANDS.OPEN, "Waiting for process... Click for options");
     await (0, terminal_1.focusAirTerminal)();
     const endedSessions = new Set();
-    const termDisp = vscode.debug.onDidTerminateDebugSession((s) => endedSessions.add(s.id));
+    const startDisp = vscode.debug.onDidStartDebugSession((s) => {
+        if (s.name.startsWith("Ignite")) {
+            state_1.GlobalState.addDebugSession(s);
+        }
+    });
+    const termDisp = vscode.debug.onDidTerminateDebugSession((s) => {
+        endedSessions.add(s.id);
+        state_1.GlobalState.removeDebugSession(s.id);
+    });
     const saveDisp = vscode.workspace.onDidSaveTextDocument(async () => {
         if (!autoContinueOnSave || !state_1.GlobalState.isRunning())
             return;
@@ -98,6 +106,7 @@ async function startAutoAttach() {
     });
     let lastPid = 0;
     let afterReload = false;
+    const preAttachStabilizationMs = Math.max(350, Math.min(1200, pollMs));
     try {
         while (state_1.GlobalState.isRunning()) {
             const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs, 3, procName);
@@ -126,6 +135,21 @@ async function startAutoAttach() {
             }
             endedSessions.clear();
             (0, ui_1.setStatus)(`$(debug-start) Ignite: attach PID ${pid} (${procName})…`, config_1.COMMANDS.OPEN);
+            await (0, common_1.sleep)(preAttachStabilizationMs);
+            if (!state_1.GlobalState.isRunning())
+                break;
+            const aliveBeforeAttach = await (0, process_1.isProcessRunning)(pid);
+            if (!aliveBeforeAttach) {
+                (0, ui_1.setStatus)(`$(loading~spin) Ignite: process changed before attach, retrying…`, config_1.COMMANDS.OPEN);
+                await (0, common_1.sleep)(250);
+                continue;
+            }
+            const matchesBeforeAttach = await (0, process_1.matchesTargetProcess)(pid, procName);
+            if (!matchesBeforeAttach) {
+                (0, ui_1.setStatus)(`$(loading~spin) Ignite: transient process detected, waiting target…`, config_1.COMMANDS.OPEN);
+                await (0, common_1.sleep)(250);
+                continue;
+            }
             const wsFolder = vscode.workspace.workspaceFolders?.[0];
             if (!wsFolder) {
                 (0, ui_1.setStatus)(`$(error) Ignite: no workspace folder found.`, config_1.COMMANDS.OPEN);
@@ -157,6 +181,10 @@ async function startAutoAttach() {
                 await (0, common_1.sleep)(2000);
                 continue;
             }
+            const startedSession = vscode.debug.activeDebugSession;
+            if (startedSession?.name.startsWith("Ignite")) {
+                state_1.GlobalState.addDebugSession(startedSession);
+            }
             lastPid = pid;
             const attachedAt = Date.now();
             (0, ui_1.setStatus)(`$(debug-alt) Ignite: attached (${procName}).`, config_1.COMMANDS.OPEN, "Attached. Click for options");
@@ -178,6 +206,7 @@ async function startAutoAttach() {
         }
     }
     finally {
+        startDisp.dispose();
         termDisp.dispose();
         saveDisp.dispose();
         state_1.GlobalState.setRunning(false);

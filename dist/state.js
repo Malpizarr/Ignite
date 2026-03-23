@@ -6,6 +6,7 @@ let statusItem;
 let airTerminal;
 let extContext;
 let disposables = [];
+let igniteDebugSessions = new Map();
 exports.GlobalState = {
     isRunning: () => running,
     setRunning: (v) => { running = v; },
@@ -15,6 +16,16 @@ exports.GlobalState = {
     setAirTerminal: (v) => { airTerminal = v; },
     getContext: () => extContext,
     setContext: (v) => { extContext = v; },
+    addDebugSession: (session) => {
+        igniteDebugSessions.set(session.id, session);
+    },
+    removeDebugSession: (sessionId) => {
+        igniteDebugSessions.delete(sessionId);
+    },
+    getDebugSessions: () => Array.from(igniteDebugSessions.values()),
+    clearDebugSessions: () => {
+        igniteDebugSessions.clear();
+    },
     addDisposable: (d) => { disposables.push(d); },
     removeDisposable: (d) => {
         const idx = disposables.indexOf(d);

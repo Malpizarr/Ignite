@@ -5,6 +5,7 @@ let statusItem: vscode.StatusBarItem | undefined;
 let airTerminal: vscode.Terminal | undefined;
 let extContext: vscode.ExtensionContext | undefined;
 let disposables: vscode.Disposable[] = [];
+let igniteDebugSessions = new Map<string, vscode.DebugSession>();
 
 export const GlobalState = {
   isRunning: () => running,
@@ -18,6 +19,17 @@ export const GlobalState = {
 
   getContext: () => extContext,
   setContext: (v: vscode.ExtensionContext) => { extContext = v; },
+
+  addDebugSession: (session: vscode.DebugSession) => {
+    igniteDebugSessions.set(session.id, session);
+  },
+  removeDebugSession: (sessionId: string) => {
+    igniteDebugSessions.delete(sessionId);
+  },
+  getDebugSessions: (): vscode.DebugSession[] => Array.from(igniteDebugSessions.values()),
+  clearDebugSessions: () => {
+    igniteDebugSessions.clear();
+  },
 
   addDisposable: (d: vscode.Disposable) => { disposables.push(d); },
   removeDisposable: (d: vscode.Disposable) => {

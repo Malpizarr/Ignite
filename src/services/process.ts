@@ -51,6 +51,24 @@ export async function pgrepNewestPid(pattern: string, timeoutMs: number = DEFAUL
   });
 }
 
+export async function pgrepAllPids(pattern: string, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<number[]> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      resolve([]);
+    }, timeoutMs);
+
+    execFile("pgrep", ["-f", pattern], (err, stdout) => {
+      clearTimeout(timer);
+      if (err) return resolve([]);
+      const pids = (stdout || "")
+        .split(/\s+/)
+        .map((s) => Number.parseInt(s.trim(), 10))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      resolve(Array.from(new Set(pids)));
+    });
+  });
+}
+
 export async function waitForPid(pattern: string, pollMs: number): Promise<number | null> {
   while (GlobalState.isRunning()) {
     const pid = await pgrepNewestPid(pattern);
@@ -150,4 +168,53 @@ export async function waitForStableProcess(
   }
 
   return null;
+}
+
+export async function findTargetProcessPids(pattern: string, procName: string): Promise<number[]> {
+  const pids = await pgrepAllPids(pattern);
+  if (pids.length === 0) return [];
+
+  const checks = await Promise.all(
+    pids.map(async (pid) => {
+      const running = await isProcessRunning(pid);
+      if (!running) return null;
+      if (await isAirOrBuildProcess(pid)) return null;
+      if (!(await matchesTargetProcess(pid, procName))) return null;
+      return pid;
+    })
+  );
+
+  return checks.filter((pid): pid is number => pid !== null);
+}
+
+export async function terminateTargetProcesses(pattern: string, procName: string): Promise<number[]> {
+  const pids = await findTargetProcessPids(pattern, procName);
+  if (pids.length === 0) return [];
+
+  for (const pid of pids) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      // ignore missing/already-dead permissions errors
+    }
+  }
+
+  const termWaitUntil = Date.now() + 1500;
+  while (Date.now() < termWaitUntil) {
+    const aliveChecks = await Promise.all(pids.map((pid) => isProcessRunning(pid)));
+    if (!aliveChecks.some(Boolean)) return pids;
+    await sleep(100);
+  }
+
+  for (const pid of pids) {
+    try {
+      if (await isProcessRunning(pid)) {
+        process.kill(pid, "SIGKILL");
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return pids;
 }

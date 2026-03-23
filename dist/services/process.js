@@ -3,10 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isProcessRunning = isProcessRunning;
 exports.getProcessCommand = getProcessCommand;
 exports.pgrepNewestPid = pgrepNewestPid;
+exports.pgrepAllPids = pgrepAllPids;
 exports.waitForPid = waitForPid;
 exports.isAirOrBuildProcess = isAirOrBuildProcess;
 exports.matchesTargetProcess = matchesTargetProcess;
 exports.waitForStableProcess = waitForStableProcess;
+exports.findTargetProcessPids = findTargetProcessPids;
+exports.terminateTargetProcesses = terminateTargetProcesses;
 const child_process_1 = require("child_process");
 const state_1 = require("../state");
 const common_1 = require("../utils/common");
@@ -50,6 +53,23 @@ async function pgrepNewestPid(pattern, timeoutMs = DEFAULT_TIMEOUT_MS) {
             const s = (stdout || "").trim();
             const pid = Number.parseInt(s, 10);
             resolve(Number.isFinite(pid) ? pid : null);
+        });
+    });
+}
+async function pgrepAllPids(pattern, timeoutMs = DEFAULT_TIMEOUT_MS) {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            resolve([]);
+        }, timeoutMs);
+        (0, child_process_1.execFile)("pgrep", ["-f", pattern], (err, stdout) => {
+            clearTimeout(timer);
+            if (err)
+                return resolve([]);
+            const pids = (stdout || "")
+                .split(/\s+/)
+                .map((s) => Number.parseInt(s.trim(), 10))
+                .filter((n) => Number.isFinite(n) && n > 0);
+            resolve(Array.from(new Set(pids)));
         });
     });
 }
@@ -139,4 +159,51 @@ async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3, procNa
         await (0, common_1.sleep)(Math.min(pollMs, 100));
     }
     return null;
+}
+async function findTargetProcessPids(pattern, procName) {
+    const pids = await pgrepAllPids(pattern);
+    if (pids.length === 0)
+        return [];
+    const checks = await Promise.all(pids.map(async (pid) => {
+        const running = await isProcessRunning(pid);
+        if (!running)
+            return null;
+        if (await isAirOrBuildProcess(pid))
+            return null;
+        if (!(await matchesTargetProcess(pid, procName)))
+            return null;
+        return pid;
+    }));
+    return checks.filter((pid) => pid !== null);
+}
+async function terminateTargetProcesses(pattern, procName) {
+    const pids = await findTargetProcessPids(pattern, procName);
+    if (pids.length === 0)
+        return [];
+    for (const pid of pids) {
+        try {
+            process.kill(pid, "SIGTERM");
+        }
+        catch {
+            // ignore missing/already-dead permissions errors
+        }
+    }
+    const termWaitUntil = Date.now() + 1500;
+    while (Date.now() < termWaitUntil) {
+        const aliveChecks = await Promise.all(pids.map((pid) => isProcessRunning(pid)));
+        if (!aliveChecks.some(Boolean))
+            return pids;
+        await (0, common_1.sleep)(100);
+    }
+    for (const pid of pids) {
+        try {
+            if (await isProcessRunning(pid)) {
+                process.kill(pid, "SIGKILL");
+            }
+        }
+        catch {
+            // ignore
+        }
+    }
+    return pids;
 }
