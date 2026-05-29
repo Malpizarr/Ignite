@@ -44,6 +44,8 @@ const state_1 = require("./state");
 const config_1 = require("./config");
 const goDebugAdapterPatch_1 = require("./services/goDebugAdapterPatch");
 const air_1 = require("./services/air");
+const session_1 = require("./session");
+const DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
 async function startAutoAttach() {
     if (state_1.GlobalState.isRunning()) {
         vscode.window.showInformationMessage("Already running.");
@@ -107,11 +109,18 @@ async function startAutoAttach() {
     let lastPid = 0;
     let afterReload = false;
     const preAttachStabilizationMs = Math.max(350, Math.min(1200, pollMs));
+    let lastConnectedAt = Date.now();
+    let timedOutByDisconnect = false;
     try {
         while (state_1.GlobalState.isRunning()) {
-            const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs, 3, procName);
-            if (!state_1.GlobalState.isRunning() || !pid)
+            const pid = await (0, process_1.waitForStableProcess)(pattern, pollMs, 3, procName, lastConnectedAt + DISCONNECT_TIMEOUT_MS);
+            if (!state_1.GlobalState.isRunning() || !pid) {
+                if (!pid && state_1.GlobalState.isRunning()) {
+                    timedOutByDisconnect = true;
+                    state_1.GlobalState.setRunning(false);
+                }
                 break;
+            }
             if (pid === lastPid) {
                 await (0, common_1.sleep)(pollMs);
                 continue;
@@ -194,6 +203,7 @@ async function startAutoAttach() {
             }
             if (!state_1.GlobalState.isRunning())
                 break;
+            lastConnectedAt = Date.now();
             afterReload = true;
             const attachedDurationMs = Date.now() - attachedAt;
             const minAttachedMs = 5000;
@@ -213,5 +223,13 @@ async function startAutoAttach() {
         const finalConfig = (0, config_1.getConfiguration)();
         (0, ui_1.setStatus)(`$(play) Ignite: ${finalConfig.processName}`, config_1.COMMANDS.OPEN, "Click to start or configure");
         await (0, common_1.sleep)(600);
+    }
+    if (timedOutByDisconnect) {
+        vscode.window.showWarningMessage("Ignite: stopped after 5 minutes without a connection.", "Restart").then(selection => {
+            if (selection === "Restart") {
+                startAutoAttach();
+            }
+        });
+        await (0, session_1.stopAll)(false);
     }
 }

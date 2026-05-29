@@ -122,12 +122,16 @@ export async function waitForStableProcess(
   pattern: string,
   pollMs: number,
   stabilityChecks: number = 3,
-  procName?: string
+  procName?: string,
+  deadlineMs?: number
 ): Promise<number | null> {
   let candidatePid: number | null = null;
   let stableCount = 0;
 
   while (GlobalState.isRunning()) {
+    if (deadlineMs !== undefined && Date.now() >= deadlineMs) {
+      return null;
+    }
     const pid = await pgrepNewestPid(pattern);
 
     if (!pid) {

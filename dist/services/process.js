@@ -120,10 +120,13 @@ async function matchesTargetProcess(pid, procName) {
     const executable = extractExecutable(cmd);
     return executableLooksLikeTarget(executable, procName);
 }
-async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3, procName) {
+async function waitForStableProcess(pattern, pollMs, stabilityChecks = 3, procName, deadlineMs) {
     let candidatePid = null;
     let stableCount = 0;
     while (state_1.GlobalState.isRunning()) {
+        if (deadlineMs !== undefined && Date.now() >= deadlineMs) {
+            return null;
+        }
         const pid = await pgrepNewestPid(pattern);
         if (!pid) {
             candidatePid = null;

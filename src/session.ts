@@ -6,7 +6,7 @@ import { getConfiguration } from "./config";
 import { buildProcessPattern } from "./utils/regex";
 import { terminateTargetProcesses } from "./services/process";
 
-export async function stopAll() {
+export async function stopAll(showMessage: boolean = true) {
   GlobalState.setRunning(false);
 
   const trackedSessions = GlobalState.getDebugSessions();
@@ -40,7 +40,9 @@ export async function stopAll() {
   const pattern = buildProcessPattern(config.processName);
   await terminateTargetProcesses(pattern, config.processName);
 
-  vscode.window.showInformationMessage("Ignite stopped.");
+  if (showMessage) {
+    vscode.window.showInformationMessage("Ignite stopped.");
+  }
 }
 
 export function deactivate() {

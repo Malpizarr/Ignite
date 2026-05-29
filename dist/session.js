@@ -42,7 +42,7 @@ const common_1 = require("./utils/common");
 const config_1 = require("./config");
 const regex_1 = require("./utils/regex");
 const process_1 = require("./services/process");
-async function stopAll() {
+async function stopAll(showMessage = true) {
     state_1.GlobalState.setRunning(false);
     const trackedSessions = state_1.GlobalState.getDebugSessions();
     const activeSession = vscode.debug.activeDebugSession;
@@ -68,7 +68,9 @@ async function stopAll() {
     const config = (0, config_1.getConfiguration)();
     const pattern = (0, regex_1.buildProcessPattern)(config.processName);
     await (0, process_1.terminateTargetProcesses)(pattern, config.processName);
-    vscode.window.showInformationMessage("Ignite stopped.");
+    if (showMessage) {
+        vscode.window.showInformationMessage("Ignite stopped.");
+    }
 }
 function deactivate() {
     state_1.GlobalState.setRunning(false);

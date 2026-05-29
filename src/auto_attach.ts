@@ -8,6 +8,9 @@ import { GlobalState } from "./state";
 import { getConfiguration, COMMANDS } from "./config";
 import { patch as patchGoDebugAdapter } from "./services/goDebugAdapterPatch";
 import { ensureAirReady } from "./services/air";
+import { stopAll } from "./session";
+
+const DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
 
 async function startAutoAttach() {
   if (GlobalState.isRunning()) {
@@ -79,11 +82,19 @@ async function startAutoAttach() {
   let lastPid = 0;
   let afterReload = false;
   const preAttachStabilizationMs = Math.max(350, Math.min(1200, pollMs));
+  let lastConnectedAt = Date.now();
+  let timedOutByDisconnect = false;
 
   try {
     while (GlobalState.isRunning()) {
-      const pid = await waitForStableProcess(pattern, pollMs, 3, procName);
-      if (!GlobalState.isRunning() || !pid) break;
+      const pid = await waitForStableProcess(pattern, pollMs, 3, procName, lastConnectedAt + DISCONNECT_TIMEOUT_MS);
+      if (!GlobalState.isRunning() || !pid) {
+        if (!pid && GlobalState.isRunning()) {
+          timedOutByDisconnect = true;
+          GlobalState.setRunning(false);
+        }
+        break;
+      }
 
       if (pid === lastPid) {
         await sleep(pollMs);
@@ -181,6 +192,7 @@ async function startAutoAttach() {
       }
 
       if (!GlobalState.isRunning()) break;
+      lastConnectedAt = Date.now();
       afterReload = true;
       const attachedDurationMs = Date.now() - attachedAt;
       const minAttachedMs = 5000;
@@ -199,6 +211,18 @@ async function startAutoAttach() {
     const finalConfig = getConfiguration();
     setStatus(`$(play) Ignite: ${finalConfig.processName}`, COMMANDS.OPEN, "Click to start or configure");
     await sleep(600);
+  }
+
+  if (timedOutByDisconnect) {
+    vscode.window.showWarningMessage(
+      "Ignite: stopped after 5 minutes without a connection.",
+      "Restart"
+    ).then(selection => {
+      if (selection === "Restart") {
+        startAutoAttach();
+      }
+    });
+    await stopAll(false);
   }
 }
 
